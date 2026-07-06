@@ -1,15 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import 'Register.dart';
+import 'Controller.dart';
 
-class Login extends StatelessWidget {
+class Login extends StatefulWidget {
   const Login({super.key});
-  void _hideKeyboard(BuildContext context) {
+
+  @override
+  State<Login> createState() => _LoginState();
+}
+
+class _LoginState extends State<Login> {
+  String email = '';
+  String password = '';
+
+  void _hideKeyboard() {
     FocusScope.of(context).requestFocus(FocusNode());
   }
 
   @override
   Widget build(BuildContext context) {
+    final viewModel = context.watch<ScooterViewModel>();
     final texts = GoogleFonts.inter(
       color: Colors.black,
       fontSize: 14,
@@ -17,7 +29,7 @@ class Login extends StatelessWidget {
     );
 
     return GestureDetector(
-      onTap: () => _hideKeyboard(context),
+      onTap: _hideKeyboard,
       child: Scaffold(
         backgroundColor: Colors.white,
         body: SafeArea(
@@ -42,6 +54,7 @@ class Login extends StatelessWidget {
                 Text("Your email:", style: texts),
                 const SizedBox(height: 8),
                 TextField(
+                  onChanged: (value) => email = value,
                   style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
                   decoration: InputDecoration(
                     hintText: 'kowalski@gmail.com',
@@ -50,11 +63,11 @@ class Login extends StatelessWidget {
                     fillColor: Colors.grey.shade200,
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(20),
-                      borderSide: const BorderSide(color: Colors.black, width: 1.5),
+                      borderSide: BorderSide(color: viewModel.emailBorderColor, width: 1.5),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(20),
-                      borderSide: const BorderSide(color: Colors.black, width: 3),
+                      borderSide: BorderSide(color: viewModel.emailBorderColor, width: 3),
                     ),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 7, vertical: 7),
                   ),
@@ -64,6 +77,7 @@ class Login extends StatelessWidget {
                 Text("Your password:", style: texts),
                 const SizedBox(height: 8),
                 TextField(
+                  onChanged: (value) => password = value,
                   obscureText: true,
                   style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
                   decoration: InputDecoration(
@@ -73,24 +87,34 @@ class Login extends StatelessWidget {
                     fillColor: Colors.grey.shade200,
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(20),
-                      borderSide: const BorderSide(color: Colors.black, width: 1.5),
+                      borderSide: BorderSide(color: viewModel.passwordBorderColor, width: 1.5),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(20),
-                      borderSide: const BorderSide(color: Colors.black, width: 3),
+                      borderSide: BorderSide(color: viewModel.passwordBorderColor, width: 3),
                     ),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 7, vertical: 7),
                   ),
                 ),
 
-                const SizedBox(height: 100),
 
+                const SizedBox(height: 10),
+                if (viewModel.message.isNotEmpty)
+                  Text(
+                    viewModel.message,
+                    style: const TextStyle(color: Colors.red, fontSize: 15, fontWeight: FontWeight.w500),
+                  ),
+
+                const SizedBox(height: 60),
                 Center(
                   child: SizedBox(
                     width: 200,
                     height: 56,
                     child: ElevatedButton(
-                      onPressed: () {},
+                      onPressed: () {
+                        _hideKeyboard();
+                        viewModel.Login(context, email, password);
+                      },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.black,
                         foregroundColor: Colors.white,
