@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart' hide Path;
 import 'package:geolocator/geolocator.dart';
+import 'package:flutter_compass/flutter_compass.dart';
 import 'dart:math' as math;
 
 class MapPage extends StatefulWidget {
@@ -13,129 +15,125 @@ class MapPage extends StatefulWidget {
   _MapPageState createState() => _MapPageState();
 }
 
-class _MapPageState extends State<MapPage> with TickerProviderStateMixin  {
+class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   final String mapboxToken = dotenv.env['TOKEN_MAP']!;
-  
+
   LatLng userLocation = const LatLng(51.23547305664311, 22.548898519702192);
-  double userHeading = 0.0;
-  double userAccuracy = 50.0;
+  LatLng targetLocation = const LatLng(51.23547305664311, 22.548898519702192);
   
+  double userHeading = 0.0;
+  double userAccuracy = 20.0;
+
+
+
   final MapController _mapController = MapController();
   StreamSubscription<Position>? _positionStream;
+  StreamSubscription<CompassEvent>? _compassStream;
+  late Ticker _ticker;
 
-
-  late AnimationController _animationController;
-  Animation<LatLng>? _latLngAnimation;
+  // Анімація пульсації
+  late AnimationController _pulseController;
+  late Animation<double> _pulseAnimation;
 
   @override
   void initState() {
     super.initState();
-    _animationController = AnimationController(
-      duration: const Duration(milliseconds: 1000), 
+    
+    _pulseController = AnimationController(
+      duration: const Duration(seconds: 2),
       vsync: this,
+    )..repeat(reverse: true);
+
+    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.4).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
+
+    _ticker = createTicker((elapsed) {
+      _updateSmoothLocation();
+    });
+    _ticker.start();
+
     _initLocation();
+    _initCompass();
   }
 
   @override
   void dispose() {
     _positionStream?.cancel();
-    _animationController.dispose();
+    _compassStream?.cancel();
+    _ticker.dispose();
+    _pulseController.dispose();
     super.dispose();
+  }
+
+  void _initCompass() {
+    try {
+      _compassStream = FlutterCompass.events?.listen((event) {
+        if (mounted) {
+          setState(() {
+            userHeading = event.heading ?? 0.0;
+          });
+        }
+      });
+    } catch (e) {
+      debugPrint("Compass error: $e");
+    }
+  }
+
+  void _updateSmoothLocation() {
+    if (userLocation == targetLocation) return;
+
+    const double lerpFactor = 0.08; 
+
+    double newLat = userLocation.latitude + (targetLocation.latitude - userLocation.latitude) * lerpFactor;
+    double newLng = userLocation.longitude + (targetLocation.longitude - userLocation.longitude) * lerpFactor;
+
+    if ((newLat - targetLocation.latitude).abs() < 0.000001 && 
+        (newLng - targetLocation.longitude).abs() < 0.000001) {
+      userLocation = targetLocation;
+    } else {
+      userLocation = LatLng(newLat, newLng);
+    }
+
+    if (mounted) setState(() {});
   }
 
   Future<void> _initLocation() async {
     bool serviceEnabled;
     LocationPermission permission;
 
-
     serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Location services are disabled. Please enable GPS.')),
-        );
-      }
-      return;
-    }
-
+    if (!serviceEnabled) return;
 
     permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Location permissions are denied.')),
-          );
-        }
-        return;
-      }
-    }
-
-    if (permission == LocationPermission.deniedForever) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Location permissions are permanently denied. Please enable them in settings.')),
-        );
-      }
-      return;
+      if (permission == LocationPermission.denied) return;
     }
 
     Position position = await Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.best,
+      desiredAccuracy: LocationAccuracy.bestForNavigation,
     );
 
-    _updateState(position, animate: false);
+    setState(() {
+      userLocation = LatLng(position.latitude, position.longitude);
+      targetLocation = userLocation;
+      userAccuracy = position.accuracy;
+    });
 
     _positionStream = Geolocator.getPositionStream(
       locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.best,
-        distanceFilter: 2, 
+        accuracy: LocationAccuracy.bestForNavigation,
+        distanceFilter: 0,
       ),
     ).listen((Position position) {
-      _updateState(position, animate: true);
-    });
-  }
-
-  void _updateState(Position position, {bool animate = true}) {
-    if (position.accuracy > 80) return; 
-
-    LatLng newLocation = LatLng(position.latitude, position.longitude);
-
-    if (animate) {
-      _animateMarker(newLocation);
-    } else {
-      setState(() {
-        userLocation = newLocation;
-      });
-    }
-
-    setState(() {
-      userAccuracy = position.accuracy;
-      if (position.heading >= 0) userHeading = position.heading;
-    });
-  }
-
-  void _animateMarker(LatLng destination) {
-    final start = userLocation;
-    
-    if (start.latitude == destination.latitude && start.longitude == destination.longitude) return;
-
-    _latLngAnimation = LatLngTween(
-      begin: start,
-      end: destination,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.linear,
-    ))
-      ..addListener(() {
+      if (position.accuracy < 50) {
+        targetLocation = LatLng(position.latitude, position.longitude);
         setState(() {
-          userLocation = _latLngAnimation!.value;
+          userAccuracy = position.accuracy;
         });
-      });
-
-    _animationController.forward(from: 0);
+      }
+    });
   }
 
   void _animatedMapMove(LatLng destLocation, double destZoom) {
@@ -180,15 +178,14 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin  {
             additionalOptions: {'accessToken': mapboxToken},
           ),
 
-          // Коло точності
           CircleLayer(
             circles: [
               CircleMarker(
                 point: userLocation,
                 radius: userAccuracy,
                 useRadiusInMeter: true,
-                color: Colors.blueAccent.withOpacity(0.15),
-                borderColor: Colors.blueAccent.withOpacity(0.3),
+                color: Colors.blueAccent.withOpacity(0.1),
+                borderColor: Colors.blueAccent.withOpacity(0.2),
                 borderStrokeWidth: 1,
               ),
             ],
@@ -198,32 +195,47 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin  {
             markers: [
               Marker(
                 point: userLocation,
-                width: 100,
-                height: 100,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    Transform.rotate(
-                      angle: (userHeading * (math.pi / 180)),
-                      child: CustomPaint(
-                        size: const Size(100, 100),
-                        painter: DirectionBeamPainter(),
-                      ),
-                    ),
+                width: 120,
+                height: 120,
+                child: AnimatedBuilder(
+                  animation: _pulseAnimation,
+                  builder: (context, child) {
+                    return Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        // Світловий промінь (Компас)
+                        Transform.rotate(
+                          angle: (userHeading * (math.pi / 180)),
+                          child: CustomPaint(
+                            size: const Size(120, 120),
+                            painter: GoogleDirectionPainter(),
+                          ),
+                        ),
 
-                    Container(
-                      width: 22,
-                      height: 22,
-                      decoration: BoxDecoration(
-                        color: Colors.blueAccent,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 3),
-                        boxShadow: [
-                          BoxShadow(color: Colors.black26, blurRadius: 6, offset: const Offset(0, 2))
-                        ],
-                      ),
-                    ),
-                  ],
+                        Container(
+                          width: 22 * _pulseAnimation.value,
+                          height: 22 * _pulseAnimation.value,
+                          decoration: BoxDecoration(
+                            color: Colors.blueAccent.withOpacity(0.2),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+
+                        Container(
+                          width: 18,
+                          height: 18,
+                          decoration: BoxDecoration(
+                            color: Colors.blueAccent,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 3),
+                            boxShadow: const [
+                              BoxShadow(color: Colors.black26, blurRadius: 6, offset: Offset(0, 2))
+                            ],
+                          ),
+                        ),
+                      ],
+                    );
+                  },
                 ),
               ),
             ],
@@ -232,41 +244,31 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin  {
       ),
       floatingActionButton: FloatingActionButton(
         backgroundColor: Colors.black,
-        onPressed: () {
-          _initLocation(); // Перевіряємо права при натисканні
-          _animatedMapMove(userLocation, 17.0);
-        },
+        onPressed: () => _animatedMapMove(userLocation, 17.0),
         child: const Icon(Icons.my_location, color: Colors.white),
       ),
     );
   }
 }
-
-class LatLngTween extends Tween<LatLng> {
-  LatLngTween({required LatLng begin, required LatLng end}) : super(begin: begin, end: end);
-
-  @override
-  LatLng lerp(double t) {
-    return LatLng(
-      begin!.latitude + (end!.latitude - begin!.latitude) * t,
-      begin!.longitude + (end!.longitude - begin!.longitude) * t,
-     );
-  }
-}
-
-class DirectionBeamPainter extends CustomPainter {
+class GoogleDirectionPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final Paint paint = Paint()
       ..shader = RadialGradient(
-        colors: [Colors.blueAccent.withOpacity(0.4), Colors.blueAccent.withOpacity(0.0)],
-        stops: const [0.1, 1.0],
-      ).createShader(Rect.fromCircle(center: Offset(size.width / 2, size.height / 2), radius: size.width / 2));
+        colors: [
+          Colors.blueAccent.withOpacity(0.5),
+          Colors.blueAccent.withOpacity(0.0)
+        ],
+        stops: const [0.2, 1.0],
+      ).createShader(Rect.fromCircle(
+        center: Offset(size.width / 2, size.height / 2),
+        radius: size.width / 2,
+      ));
 
     final double centerX = size.width / 2;
     final double centerY = size.height / 2;
     final double radius = size.width / 2;
-    final double angleWidth = 30.0 * (math.pi / 180);
+    const double angleWidth = 25.0 * (math.pi / 180);
 
     final Path path = Path()
       ..moveTo(centerX, centerY)
