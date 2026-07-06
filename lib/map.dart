@@ -22,9 +22,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   LatLng targetLocation = const LatLng(51.23547305664311, 22.548898519702192);
   
   double userHeading = 0.0;
+  double targetHeading = 0.0;
   double userAccuracy = 20.0;
-
-
 
   final MapController _mapController = MapController();
   StreamSubscription<Position>? _positionStream;
@@ -44,12 +43,13 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       vsync: this,
     )..repeat(reverse: true);
 
-    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.4).animate(
+    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.3).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
 
+    // Тікер для 60fps плавності всього
     _ticker = createTicker((elapsed) {
-      _updateSmoothLocation();
+      _updateSmoothElements();
     });
     _ticker.start();
 
@@ -69,10 +69,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   void _initCompass() {
     try {
       _compassStream = FlutterCompass.events?.listen((event) {
-        if (mounted) {
-          setState(() {
-            userHeading = event.heading ?? 0.0;
-          });
+        if (mounted && event.heading != null) {
+          targetHeading = event.heading!;
         }
       });
     } catch (e) {
@@ -80,20 +78,17 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     }
   }
 
-  void _updateSmoothLocation() {
-    if (userLocation == targetLocation) return;
+  void _updateSmoothElements() {
+    const double locationLerp = 0.06; 
+    double newLat = userLocation.latitude + (targetLocation.latitude - userLocation.latitude) * locationLerp;
+    double newLng = userLocation.longitude + (targetLocation.longitude - userLocation.longitude) * locationLerp;
+    const double rotationLerp = 0.15;
+    double diff = targetHeading - userHeading;
+    if (diff > 180) diff -= 360;
+    if (diff < -180) diff += 360;
+    userHeading += diff * rotationLerp;
 
-    const double lerpFactor = 0.08; 
-
-    double newLat = userLocation.latitude + (targetLocation.latitude - userLocation.latitude) * lerpFactor;
-    double newLng = userLocation.longitude + (targetLocation.longitude - userLocation.longitude) * lerpFactor;
-
-    if ((newLat - targetLocation.latitude).abs() < 0.000001 && 
-        (newLng - targetLocation.longitude).abs() < 0.000001) {
-      userLocation = targetLocation;
-    } else {
-      userLocation = LatLng(newLat, newLng);
-    }
+    userLocation = LatLng(newLat, newLng);
 
     if (mounted) setState(() {});
   }
@@ -127,8 +122,17 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         distanceFilter: 0,
       ),
     ).listen((Position position) {
-      if (position.accuracy < 50) {
-        targetLocation = LatLng(position.latitude, position.longitude);
+      if (position.accuracy < 40) {
+        LatLng newPos = LatLng(position.latitude, position.longitude);
+        double dist = Geolocator.distanceBetween(
+          targetLocation.latitude, targetLocation.longitude,
+          newPos.latitude, newPos.longitude
+        );
+
+        if (dist > 0.5) {
+          targetLocation = newPos;
+        }
+
         setState(() {
           userAccuracy = position.accuracy;
         });
@@ -184,8 +188,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                 point: userLocation,
                 radius: userAccuracy,
                 useRadiusInMeter: true,
-                color: Colors.blueAccent.withOpacity(0.1),
-                borderColor: Colors.blueAccent.withOpacity(0.2),
+                color: Colors.blueAccent.withOpacity(0.08),
+                borderColor: Colors.blueAccent.withOpacity(0.15),
                 borderStrokeWidth: 1,
               ),
             ],
@@ -197,45 +201,44 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                 point: userLocation,
                 width: 120,
                 height: 120,
-                child: AnimatedBuilder(
-                  animation: _pulseAnimation,
-                  builder: (context, child) {
-                    return Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        // Світловий промінь (Компас)
-                        Transform.rotate(
-                          angle: (userHeading * (math.pi / 180)),
-                          child: CustomPaint(
-                            size: const Size(120, 120),
-                            painter: GoogleDirectionPainter(),
-                          ),
-                        ),
-
-                        Container(
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Transform.rotate(
+                      angle: (userHeading * (math.pi / 180)),
+                      child: CustomPaint(
+                        size: const Size(120, 120),
+                        painter: GoogleDirectionPainter(),
+                      ),
+                    ),
+                    //ря
+                    AnimatedBuilder(
+                      animation: _pulseAnimation,
+                      builder: (context, child) {
+                        return Container(
                           width: 22 * _pulseAnimation.value,
                           height: 22 * _pulseAnimation.value,
                           decoration: BoxDecoration(
                             color: Colors.blueAccent.withOpacity(0.2),
                             shape: BoxShape.circle,
                           ),
-                        ),
+                        );
+                      },
+                    ),
 
-                        Container(
-                          width: 18,
-                          height: 18,
-                          decoration: BoxDecoration(
-                            color: Colors.blueAccent,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 3),
-                            boxShadow: const [
-                              BoxShadow(color: Colors.black26, blurRadius: 6, offset: Offset(0, 2))
-                            ],
-                          ),
-                        ),
-                      ],
-                    );
-                  },
+                    Container(
+                      width: 18,
+                      height: 18,
+                      decoration: BoxDecoration(
+                        color: Colors.blueAccent,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 3),
+                        boxShadow: const [
+                          BoxShadow(color: Colors.black26, blurRadius: 6, offset: Offset(0, 2))
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -250,13 +253,14 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     );
   }
 }
+
 class GoogleDirectionPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final Paint paint = Paint()
       ..shader = RadialGradient(
         colors: [
-          Colors.blueAccent.withOpacity(0.5),
+          Colors.blueAccent.withOpacity(0.4),
           Colors.blueAccent.withOpacity(0.0)
         ],
         stops: const [0.2, 1.0],
@@ -268,7 +272,7 @@ class GoogleDirectionPainter extends CustomPainter {
     final double centerX = size.width / 2;
     final double centerY = size.height / 2;
     final double radius = size.width / 2;
-    const double angleWidth = 25.0 * (math.pi / 180);
+    const double angleWidth = 20.0 * (math.pi / 180);
 
     final Path path = Path()
       ..moveTo(centerX, centerY)
