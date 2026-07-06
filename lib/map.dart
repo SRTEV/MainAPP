@@ -20,7 +20,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
 
   LatLng userLocation = const LatLng(51.23547305664311, 22.548898519702192);
   LatLng targetLocation = const LatLng(51.23547305664311, 22.548898519702192);
-  
+
   double userHeading = 0.0;
   double targetHeading = 0.0;
   double userAccuracy = 20.0;
@@ -37,7 +37,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
-    
+
     _pulseController = AnimationController(
       duration: const Duration(seconds: 2),
       vsync: this,
@@ -79,16 +79,33 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   }
 
   void _updateSmoothElements() {
-    const double locationLerp = 0.06; 
-    double newLat = userLocation.latitude + (targetLocation.latitude - userLocation.latitude) * locationLerp;
-    double newLng = userLocation.longitude + (targetLocation.longitude - userLocation.longitude) * locationLerp;
-    const double rotationLerp = 0.15;
+    const double lerpFactor = 0.04;
+    //1.
+    // 0.01 – 0.05 (Ідеально): Ефект «тягучості». Маркер ніби пливе по маслу. Дуже приємно для ока, але при великих значеннях може здаватися, що він трохи «запізнюється» за вами.
+    // 2.
+    // 0.06 – 0.15 (Швидко, але плавно): Баланс. Маркер рухається впевнено, наздоганяє вас швидко, але все ще без ривків. Це «золота середина».
+    // 3.
+    // 0.2 – 0.3 (Межа): Тут «масло» закінчується. Рух стає «нервовим». Людське око починає помічати, що точка дуже швидко «приліпає» до цілі, і виникає ефект мікро-ривків.
+    // 4.
+    // Вище 0.5: Це вже виглядає як «роботизований» рух. Точка просто дуже швидко смикається в нову позицію.
+
+
+    double latDiff = targetLocation.latitude - userLocation.latitude;
+    double lngDiff = targetLocation.longitude - userLocation.longitude;
+    if (latDiff.abs() < 0.000001 && lngDiff.abs() < 0.000001) {
+      userLocation = targetLocation;
+    } else {
+      userLocation = LatLng(
+        userLocation.latitude + latDiff * lerpFactor,
+        userLocation.longitude + lngDiff * lerpFactor,
+      );
+    }
+
+    const double rotationLerp = 0.1;
     double diff = targetHeading - userHeading;
     if (diff > 180) diff -= 360;
     if (diff < -180) diff += 360;
     userHeading += diff * rotationLerp;
-
-    userLocation = LatLng(newLat, newLng);
 
     if (mounted) setState(() {});
   }
