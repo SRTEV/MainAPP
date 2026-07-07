@@ -2,15 +2,34 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:mysql1/mysql1.dart';
 import 'db.dart';
 import 'map.dart';
 
-class ScooterViewModel extends ChangeNotifier {
+class VehicleModel {
+  final int id;
+  final LatLng position;
+  final String status;
+  final String type;
+
+  VehicleModel({
+    required this.id,
+    required this.position,
+    required this.status,
+    required this.type,
+  });
+}
+
+class Controller extends ChangeNotifier {
   Color nameBorderColor = Colors.black;
   Color emailBorderColor = Colors.black;
   Color passwordBorderColor = Colors.black;
   String message = '';
+
+
+
+  List<VehicleModel> vehicles = [];
 
   String _hashPassword(String password) {
     var bytes = utf8.encode(password);
@@ -86,11 +105,10 @@ class ScooterViewModel extends ChangeNotifier {
       );
 
       if (results.isNotEmpty) {
-
         notifyListeners();
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => MapPage()),
+          MaterialPageRoute(builder: (context) => const MapPage()),
         );
       } else {
         emailBorderColor = Colors.red;
@@ -105,5 +123,38 @@ class ScooterViewModel extends ChangeNotifier {
     } finally {
       await conn?.close();
     }
+  }
+
+  Future<void> fetchVehicles() async {
+    MySqlConnection? conn;
+    try {
+      conn = await MySqlConnection.connect(DatabaseHelper.settings);
+      
+      var results = await conn.query('''
+        SELECT v.id, v.Position_X, v.Position_Y, t.Name as TypeName, s.Name as StatusName
+        FROM Vehicle v
+        JOIN Vechicle_Status s ON v.id = s.ID
+        JOIN Vehicle_Type t ON t.id = s.ID
+      ''');
+
+      vehicles = results.map((row) {
+        return VehicleModel(
+          id: row[0],
+          position: LatLng(double.parse(row[1].toString()), double.parse(row[2].toString())),
+          status: row[4].toString(),
+          type: row[3].toString(),
+        );
+      }).toList();
+
+      debugPrint("Fetched ${vehicles.length} vehicles");
+      for (var vehicle in vehicles) {
+        debugPrint("ID: ${vehicle.id}, Position: ${vehicle.position}, Status: ${vehicle.status}, Type: ${vehicle.type}");
+      }
+    } catch (e) {
+      debugPrint("Database error: $e");
+    } finally {
+      await conn?.close();
+    }
+    notifyListeners();
   }
 }

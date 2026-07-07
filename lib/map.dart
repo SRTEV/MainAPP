@@ -6,7 +6,10 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart' hide Path;
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter_compass/flutter_compass.dart';
+import 'package:provider/provider.dart';
 import 'dart:math' as math;
+
+import 'Controller.dart';
 
 class MapPage extends StatefulWidget {
   const MapPage({super.key});
@@ -29,8 +32,6 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   StreamSubscription<Position>? _positionStream;
   StreamSubscription<CompassEvent>? _compassStream;
   late Ticker _ticker;
-
-  // Анімація пульсації
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
 
@@ -47,7 +48,6 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
 
-    // Тікер для 60fps плавності всього
     _ticker = createTicker((elapsed) {
       _updateSmoothElements();
     });
@@ -55,6 +55,9 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
 
     _initLocation();
     _initCompass();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<Controller>().fetchVehicles();
+    });
   }
 
   @override
@@ -80,15 +83,6 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
 
   void _updateSmoothElements() {
     const double lerpFactor = 0.04;
-    //1.
-    // 0.01 – 0.05 (Ідеально): Ефект «тягучості». Маркер ніби пливе по маслу. Дуже приємно для ока, але при великих значеннях може здаватися, що він трохи «запізнюється» за вами.
-    // 2.
-    // 0.06 – 0.15 (Швидко, але плавно): Баланс. Маркер рухається впевнено, наздоганяє вас швидко, але все ще без ривків. Це «золота середина».
-    // 3.
-    // 0.2 – 0.3 (Межа): Тут «масло» закінчується. Рух стає «нервовим». Людське око починає помічати, що точка дуже швидко «приліпає» до цілі, і виникає ефект мікро-ривків.
-    // 4.
-    // Вище 0.5: Це вже виглядає як «роботизований» рух. Точка просто дуже швидко смикається в нову позицію.
-
 
     double latDiff = targetLocation.latitude - userLocation.latitude;
     double lngDiff = targetLocation.longitude - userLocation.longitude;
@@ -142,8 +136,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       if (position.accuracy < 40) {
         LatLng newPos = LatLng(position.latitude, position.longitude);
         double dist = Geolocator.distanceBetween(
-          targetLocation.latitude, targetLocation.longitude,
-          newPos.latitude, newPos.longitude
+            targetLocation.latitude, targetLocation.longitude,
+            newPos.latitude, newPos.longitude
         );
 
         if (dist > 0.5) {
@@ -183,6 +177,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
+    final vehicles = context.watch<Controller>().vehicles;
+
     return Scaffold(
       body: FlutterMap(
         mapController: _mapController,
@@ -198,7 +194,6 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
             urlTemplate: 'https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/{z}/{x}/{y}?access_token={accessToken}',
             additionalOptions: {'accessToken': mapboxToken},
           ),
-
           CircleLayer(
             circles: [
               CircleMarker(
@@ -211,7 +206,17 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
               ),
             ],
           ),
-
+          // ШАР ЗІ СКУТЕРАМИ (винесено окремим шаром)
+          MarkerLayer(
+            key: ValueKey(vehicles.length),
+            markers: vehicles.map((v) => Marker(
+              point: v.position,
+              width: 40,
+              height: 40,
+              child: const Icon(Icons.electric_scooter, color: Colors.black, size: 30),
+            )).toList(),
+          ),
+          // ШАР КОРИСТУВАЧА
           MarkerLayer(
             markers: [
               Marker(
@@ -225,10 +230,9 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                       angle: (userHeading * (math.pi / 180)),
                       child: CustomPaint(
                         size: const Size(120, 120),
-                        painter: GoogleDirectionPainter(),
+                        painter: Pointer(),
                       ),
                     ),
-                    //ря
                     AnimatedBuilder(
                       animation: _pulseAnimation,
                       builder: (context, child) {
@@ -242,7 +246,6 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                         );
                       },
                     ),
-
                     Container(
                       width: 18,
                       height: 18,
@@ -264,14 +267,17 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       ),
       floatingActionButton: FloatingActionButton(
         backgroundColor: Colors.black,
-        onPressed: () => _animatedMapMove(userLocation, 17.0),
+        onPressed: () {
+          context.read<Controller>().fetchVehicles();
+          _animatedMapMove(userLocation, 17.0);
+        },
         child: const Icon(Icons.my_location, color: Colors.white),
       ),
     );
   }
 }
 
-class GoogleDirectionPainter extends CustomPainter {
+class Pointer extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final Paint paint = Paint()

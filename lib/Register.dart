@@ -42,7 +42,7 @@ class _RegisterState extends State<Register> {
 
   @override
   Widget build(BuildContext context) {
-    final viewModel = context.watch<ScooterViewModel>();
+    final viewModel = context.watch<Controller>();
     final texts = GoogleFonts.inter(
       color: Colors.black,
       fontSize: 14,
@@ -114,7 +114,7 @@ class _RegisterState extends State<Register> {
                     child: ElevatedButton(
                       onPressed: () {
                         _hideKeyboard();
-                        context.read<ScooterViewModel>().Register(
+                        context.read<Controller>().Register(
                               name,
                               email,
                               password,

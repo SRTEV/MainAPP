@@ -21,7 +21,7 @@ class _LoginState extends State<Login> {
 
   @override
   Widget build(BuildContext context) {
-    final viewModel = context.watch<ScooterViewModel>();
+    final viewModel = context.watch<Controller>();
     final texts = GoogleFonts.inter(
       color: Colors.black,
       fontSize: 14,

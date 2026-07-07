@@ -14,7 +14,7 @@ void main() async {
   await DatabaseHelper.connectToDatabase();
   runApp(
     ChangeNotifierProvider(
-      create: (_) => ScooterViewModel(),
+      create: (_) => Controller(),
       child: const MaterialApp(
         debugShowCheckedModeBanner: false,
         home: Login(),
