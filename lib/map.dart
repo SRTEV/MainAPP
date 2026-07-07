@@ -27,19 +27,6 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   bool Fallow = true;
   Timer? _resumeTimer;
 
-  String getIconForVehicleType(String type) {
-    switch (type) {
-      case 'Electric Scooter':
-        return 'lib/assets/imgs/scooter.png';
-      case 'Monowheel':
-        return 'lib/assets/imgs/monowheel.png';
-      case 'Bike':
-        return 'lib/assets/imgs/bike.png';
-      default:
-        return 'lib/assets/imgs/scooter.png';
-    }
-  }
-
   final MapController _mapController = MapController();
   StreamSubscription<Position>? _positionStream;
   StreamSubscription<CompassEvent>? _compassStream;
@@ -50,27 +37,44 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+    _pulseController = AnimationController(duration: const Duration(seconds: 2), vsync: this)..repeat(reverse: true);
+    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.3).animate(CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut));
 
-    _pulseController = AnimationController(
-      duration: const Duration(seconds: 2),
-      vsync: this,
-    )..repeat(reverse: true);
-
-    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.3).animate(
-      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
-    );
-
-    _ticker = createTicker((elapsed) {
-      _updateSmoothElements();
-    });
+    _ticker = createTicker((elapsed) => _updateSmoothElements());
     _ticker.start();
 
     _initLocation();
     _initCompass();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final controller = context.read<Controller>();
-      controller.fetchVehicles();
-      controller.startVehiclePolling();
+      context.read<Controller>().fetchVehicles();
+      context.read<Controller>().startVehiclePolling();
+    });
+  }
+
+  void _updateSmoothElements() {
+    const double lerpFactor = 0.08;
+    userLocation = LatLng(
+      userLocation.latitude + (targetLocation.latitude - userLocation.latitude) * lerpFactor,
+      userLocation.longitude + (targetLocation.longitude - userLocation.longitude) * lerpFactor,
+    );
+
+    if (Fallow) {
+      _mapController.move(userLocation, _mapController.camera.zoom);
+    }
+
+    const double rotationLerp = 0.15;
+    double diff = targetHeading - userHeading;
+    if (diff > 180) diff -= 360;
+    if (diff < -180) diff += 360;
+    userHeading += diff * rotationLerp;
+
+    if (mounted) setState(() {});
+  }
+
+  void _startResumeTimer() {
+    _resumeTimer?.cancel();
+    _resumeTimer = Timer(const Duration(seconds: 5), () {
+      if (mounted) setState(() => Fallow = true);
     });
   }
 
@@ -84,106 +88,27 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     super.dispose();
   }
 
-  void _startResumeTimer() {
-    _resumeTimer?.cancel();
-    _resumeTimer = Timer(const Duration(seconds: 5), () {
-      if (mounted && !Fallow) {
-        setState(() => Fallow = true);
-      }
-    });
-  }
-
-  void _initCompass() {
-    try {
-      _compassStream = FlutterCompass.events?.listen((event) {
-        if (mounted && event.heading != null) {
-          targetHeading = event.heading!;
-        }
-      });
-    } catch (e) {
-      debugPrint("Compass error: $e");
-    }
-  }
-
-
-  void _updateSmoothElements() {
-    const double lerpFactor = 0.08;
-    userLocation = LatLng(
-      userLocation.latitude + (targetLocation.latitude - userLocation.latitude) * lerpFactor,
-      userLocation.longitude + (targetLocation.longitude - userLocation.longitude) * lerpFactor,
-    );
-    if (Fallow) {
-      _mapController.move(userLocation, _mapController.camera.zoom);
-    }
-    const double rotationLerp = 0.15;
-    double diff = targetHeading - userHeading;
-    if (diff > 180) diff -= 360;
-    if (diff < -180) diff += 360;
-    userHeading += diff * rotationLerp;
-    if (mounted) setState(() {});
-  }
-
+  // --- Методи ініціалізації ---
   Future<void> _initLocation() async {
-    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) return;
-
-    LocationPermission permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) return;
-    }
-
-    Position position = await Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.bestForNavigation,
-    );
-
+    Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.bestForNavigation);
     setState(() {
       userLocation = LatLng(position.latitude, position.longitude);
       targetLocation = userLocation;
-      userAccuracy = position.accuracy;
     });
 
     _positionStream = Geolocator.getPositionStream(
       locationSettings: const LocationSettings(
         accuracy: LocationAccuracy.bestForNavigation,
-        distanceFilter: 0,
-      ),
-    ).listen((Position position) {
-      if (position.accuracy < 40) {
-        LatLng newPos = LatLng(position.latitude, position.longitude);
-        double dist = Geolocator.distanceBetween(
-          targetLocation.latitude, targetLocation.longitude,
-          newPos.latitude, newPos.longitude,
-        );
-
-        if (dist > 0.5) targetLocation = newPos;
-        setState(() => userAccuracy = position.accuracy);
-      }
-    });
+        distanceFilter: 0 // Отримуємо всі мікро-зміни для максимальної плавності
+      )
+    ).listen((p) => setState(() {
+      targetLocation = LatLng(p.latitude, p.longitude);
+      userAccuracy = p.accuracy;
+    }));
   }
 
-  void _animatedMapMove(LatLng destLocation, double destZoom) {
-    final latTween = Tween<double>(begin: _mapController.camera.center.latitude, end: destLocation.latitude);
-    final lngTween = Tween<double>(begin: _mapController.camera.center.longitude, end: destLocation.longitude);
-    final zoomTween = Tween<double>(begin: _mapController.camera.zoom, end: destZoom);
-
-    final controller = AnimationController(duration: const Duration(milliseconds: 1000), vsync: this);
-    final animation = CurvedAnimation(parent: controller, curve: Curves.fastOutSlowIn);
-
-    controller.addListener(() {
-      _mapController.move(
-        LatLng(latTween.evaluate(animation), lngTween.evaluate(animation)),
-        zoomTween.evaluate(animation),
-      );
-    });
-
-    animation.addStatusListener((status) {
-      if (status == AnimationStatus.completed || status == AnimationStatus.dismissed) {
-        controller.dispose();
-      }
-    });
-
-    controller.forward();
+  void _initCompass() {
+    _compassStream = FlutterCompass.events?.listen((e) => targetHeading = e.heading ?? 0.0);
   }
 
   @override
@@ -198,132 +123,70 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
           initialZoom: 16.0,
           onMapEvent: (event) {
             if (event.source == MapEventSource.onDrag) {
-              if (Fallow) setState(() => Fallow = false);
-              _startResumeTimer();
-            }
-            if (event.source == MapEventSource.onMultiFinger ||
-                event.source == MapEventSource.onDrag) {
-              _resumeTimer?.cancel();
-            }
-          },
-          onPositionChanged: (position, hasGesture) {
-            if (hasGesture && !Fallow) {
+              setState(() => Fallow = false);
               _startResumeTimer();
             }
           },
           interactionOptions: const InteractionOptions(flags: InteractiveFlag.all),
         ),
         children: [
-          TileLayer(
-            urlTemplate: 'https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/{z}/{x}/{y}?access_token={accessToken}',
-            additionalOptions: {'accessToken': mapboxToken},
-          ),
-          CircleLayer(
-            circles: [
-              CircleMarker(
-                point: userLocation,
-                radius: userAccuracy,
-                useRadiusInMeter: true,
-                color: Colors.blueAccent.withOpacity(0.08),
-                borderColor: Colors.blueAccent.withOpacity(0.15),
-                borderStrokeWidth: 1,
-              ),
-            ],
-          ),
+          TileLayer(urlTemplate: 'https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/{z}/{x}/{y}?access_token={accessToken}', additionalOptions: {'accessToken': mapboxToken}),
+
           MarkerLayer(
-            markers: vehicles
-                .map((v) => Marker(
-                      point: v.position,
-                      width: 40,
-                      height: 40,
-                      child: Opacity(
-                        opacity: v.status.toLowerCase().contains("available") ? 1.0 : 0.3,
-                        child: Image.asset(
-                          getIconForVehicleType(v.type),
-                          width: 40,
-                          height: 40,
-                          fit: BoxFit.contain,
-                        ),
-                      ),
-                    ))
-                .toList(),
+            markers: vehicles.map((v) => Marker(
+              point: v.position,
+              width: 40, height: 40,
+              child: Image.asset(getIconForVehicleType(v.type)),
+            )).toList(),
           ),
-          MarkerLayer(
-            markers: [
-              Marker(
-                point: userLocation,
-                width: 120,
-                height: 120,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    Transform.rotate(
-                      angle: (userHeading * (math.pi / 180)),
-                      child: CustomPaint(size: const Size(120, 120), painter: Pointer()),
-                    ),
-                    AnimatedBuilder(
-                      animation: _pulseAnimation,
-                      builder: (context, child) => Container(
-                        width: 22 * _pulseAnimation.value,
-                        height: 22 * _pulseAnimation.value,
-                        decoration: BoxDecoration(color: Colors.blueAccent.withOpacity(0.2), shape: BoxShape.circle),
-                      ),
-                    ),
-                    Container(
-                      width: 18,
-                      height: 18,
-                      decoration: BoxDecoration(
-                        color: Colors.blueAccent,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 3),
-                        boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 6, offset: Offset(0, 2))],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+
+          MarkerLayer(markers: [
+            Marker(point: userLocation, width: 120, height: 120, child: _buildUserPointer())
+          ]),
         ],
       ),
       floatingActionButton: FloatingActionButton(
         backgroundColor: Colors.black,
-        onPressed: () {
-          setState(() => Fallow = true);
-          context.read<Controller>().fetchVehicles();
-          _animatedMapMove(userLocation, 18.0);
-        },
+        onPressed: () => setState(() => Fallow = true),
         child: const Icon(Icons.my_location, color: Colors.white),
       ),
     );
   }
+
+  Widget _buildUserPointer() {
+    return Stack(alignment: Alignment.center, children: [
+      Transform.rotate(angle: (userHeading * (math.pi / 180)), child: CustomPaint(size: const Size(120, 120), painter: Pointer())),
+      AnimatedBuilder(animation: _pulseAnimation, builder: (c, _) => Container(width: 22 * _pulseAnimation.value, height: 22 * _pulseAnimation.value, decoration: BoxDecoration(color: Colors.blueAccent.withOpacity(0.2), shape: BoxShape.circle))),
+      Container(width: 18, height: 18, decoration: BoxDecoration(color: Colors.blueAccent, shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 3)))
+    ]);
+  }
+
+  String getIconForVehicleType(String type) => 'lib/assets/imgs/${type.toLowerCase().contains("bike") ? "bike" : "scooter"}.png';
 }
 
 class Pointer extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
+    final centerX = size.width / 2;
+    final centerY = size.height / 2;
+    final radius = size.width / 2;
+
     final Paint paint = Paint()
       ..shader = RadialGradient(
-        colors: [Colors.blueAccent.withOpacity(0.4), Colors.blueAccent.withOpacity(0.0)],
-        stops: const [0.2, 1.0],
-      ).createShader(Rect.fromCircle(center: Offset(size.width / 2, size.height / 2), radius: size.width / 2));
+        colors: [Colors.blueAccent.withOpacity(0.6), Colors.blueAccent.withOpacity(0.0)],
+        stops: const [0.3, 1.0],
+      ).createShader(Rect.fromCircle(center: Offset(centerX, centerY), radius: radius));
 
-    final double centerX = size.width / 2;
-    final double centerY = size.height / 2;
-    final double radius = size.width / 2;
-    const double angleWidth = 20.0 * (math.pi / 180);
+    const double angleWidth = 25.0 * (math.pi / 180);
 
     final Path path = Path()
       ..moveTo(centerX, centerY)
-      ..relativeLineTo(radius * math.sin(angleWidth), -radius * math.cos(angleWidth))
-      ..arcToPoint(
-        Offset(centerX - radius * math.sin(angleWidth), centerY - radius * math.cos(angleWidth)),
-        radius: Radius.circular(radius),
-        clockwise: false,
-      )
+      ..lineTo(centerX + radius * math.sin(angleWidth), centerY - radius * math.cos(angleWidth))
+      ..arcToPoint(Offset(centerX - radius * math.sin(angleWidth), centerY - radius * math.cos(angleWidth)), radius: Radius.circular(radius), clockwise: false)
       ..close();
+
     canvas.drawPath(path, paint);
   }
   @override
-  bool shouldRepaint(CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
