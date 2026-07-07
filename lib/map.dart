@@ -207,7 +207,6 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
             }
           },
           onPositionChanged: (position, hasGesture) {
-            // Якщо користувач припинив рухати карту - запускаємо таймер повернення
             if (hasGesture && !Fallow) {
               _startResumeTimer();
             }
