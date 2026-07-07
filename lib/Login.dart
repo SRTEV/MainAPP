@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'Register.dart';
-import 'Controller.dart';
+import 'AuthController.dart';
 
 class Login extends StatefulWidget {
   const Login({super.key});
@@ -21,7 +21,7 @@ class _LoginState extends State<Login> {
 
   @override
   Widget build(BuildContext context) {
-    final viewModel = context.watch<Controller>();
+    final viewModel = context.watch<AuthController>();
     final texts = GoogleFonts.inter(
       color: Colors.black,
       fontSize: 14,
@@ -137,6 +137,8 @@ class _LoginState extends State<Login> {
                     children: [
                       TextButton(
                         onPressed: () {
+                          _hideKeyboard();
+                          viewModel.clearMessage();
                           Navigator.push(
                             context,
                             MaterialPageRoute(builder: (context) => const Register()),

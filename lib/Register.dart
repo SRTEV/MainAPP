@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-import 'Controller.dart';
+import 'AuthController.dart';
 
 class Register extends StatefulWidget {
   const Register({super.key});
@@ -42,7 +42,7 @@ class _RegisterState extends State<Register> {
 
   @override
   Widget build(BuildContext context) {
-    final viewModel = context.watch<Controller>();
+    final viewModel = context.watch<AuthController>();
     final texts = GoogleFonts.inter(
       color: Colors.black,
       fontSize: 14,
@@ -114,7 +114,8 @@ class _RegisterState extends State<Register> {
                     child: ElevatedButton(
                       onPressed: () {
                         _hideKeyboard();
-                        context.read<Controller>().Register(
+                        context.read<AuthController>().Register(
+                              context,
                               name,
                               email,
                               password,
@@ -145,8 +146,18 @@ class _RegisterState extends State<Register> {
                         "Already have an account? ",
                         style: TextStyle(color: Colors.black, fontWeight: FontWeight.w500),
                       ),
-                      GestureDetector(
-                        onTap: () => Navigator.pop(context),
+                      TextButton(
+                        onPressed: () {
+
+                          _hideKeyboard();
+                          viewModel.clearMessage();
+                          Navigator.pop(context);
+                        },
+                        style: TextButton.styleFrom(
+                          padding: EdgeInsets.zero,
+                          minimumSize: const Size(0, 0),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
                         child: const Text(
                           "Log in",
                           style: TextStyle(
@@ -155,7 +166,7 @@ class _RegisterState extends State<Register> {
                             decoration: TextDecoration.underline,
                           ),
                         ),
-                      ),
+                      )
                     ],
                   ),
                 ),

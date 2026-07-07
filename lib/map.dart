@@ -8,7 +8,6 @@ import 'package:geolocator/geolocator.dart';
 import 'package:flutter_compass/flutter_compass.dart';
 import 'package:provider/provider.dart';
 import 'dart:math' as math;
-
 import 'Controller.dart';
 
 class MapPage extends StatefulWidget {
@@ -20,13 +19,26 @@ class MapPage extends StatefulWidget {
 
 class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   final String mapboxToken = dotenv.env['TOKEN_MAP']!;
-
   LatLng userLocation = const LatLng(51.23547305664311, 22.548898519702192);
   LatLng targetLocation = const LatLng(51.23547305664311, 22.548898519702192);
-
   double userHeading = 0.0;
   double targetHeading = 0.0;
   double userAccuracy = 20.0;
+  bool Fallow = true;
+  Timer? _resumeTimer;
+
+  String getIconForVehicleType(String type) {
+    switch (type) {
+      case 'Electric Scooter':
+        return 'lib/assets/imgs/scooter.png';
+      case 'Monowheel':
+        return 'lib/assets/imgs/monowheel.png';
+      case 'Bike':
+        return 'lib/assets/imgs/bike.png';
+      default:
+        return 'lib/assets/imgs/scooter.png';
+    }
+  }
 
   final MapController _mapController = MapController();
   StreamSubscription<Position>? _positionStream;
@@ -56,7 +68,9 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     _initLocation();
     _initCompass();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<Controller>().fetchVehicles();
+      final controller = context.read<Controller>();
+      controller.fetchVehicles();
+      controller.startVehiclePolling();
     });
   }
 
@@ -64,9 +78,19 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   void dispose() {
     _positionStream?.cancel();
     _compassStream?.cancel();
+    _resumeTimer?.cancel();
     _ticker.dispose();
     _pulseController.dispose();
     super.dispose();
+  }
+
+  void _startResumeTimer() {
+    _resumeTimer?.cancel();
+    _resumeTimer = Timer(const Duration(seconds: 5), () {
+      if (mounted && !Fallow) {
+        setState(() => Fallow = true);
+      }
+    });
   }
 
   void _initCompass() {
@@ -81,37 +105,29 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     }
   }
 
+
   void _updateSmoothElements() {
-    const double lerpFactor = 0.04;
-
-    double latDiff = targetLocation.latitude - userLocation.latitude;
-    double lngDiff = targetLocation.longitude - userLocation.longitude;
-    if (latDiff.abs() < 0.000001 && lngDiff.abs() < 0.000001) {
-      userLocation = targetLocation;
-    } else {
-      userLocation = LatLng(
-        userLocation.latitude + latDiff * lerpFactor,
-        userLocation.longitude + lngDiff * lerpFactor,
-      );
+    const double lerpFactor = 0.08;
+    userLocation = LatLng(
+      userLocation.latitude + (targetLocation.latitude - userLocation.latitude) * lerpFactor,
+      userLocation.longitude + (targetLocation.longitude - userLocation.longitude) * lerpFactor,
+    );
+    if (Fallow) {
+      _mapController.move(userLocation, _mapController.camera.zoom);
     }
-
-    const double rotationLerp = 0.1;
+    const double rotationLerp = 0.15;
     double diff = targetHeading - userHeading;
     if (diff > 180) diff -= 360;
     if (diff < -180) diff += 360;
     userHeading += diff * rotationLerp;
-
     if (mounted) setState(() {});
   }
 
   Future<void> _initLocation() async {
-    bool serviceEnabled;
-    LocationPermission permission;
-
-    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) return;
 
-    permission = await Geolocator.checkPermission();
+    LocationPermission permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied) return;
@@ -136,17 +152,12 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       if (position.accuracy < 40) {
         LatLng newPos = LatLng(position.latitude, position.longitude);
         double dist = Geolocator.distanceBetween(
-            targetLocation.latitude, targetLocation.longitude,
-            newPos.latitude, newPos.longitude
+          targetLocation.latitude, targetLocation.longitude,
+          newPos.latitude, newPos.longitude,
         );
 
-        if (dist > 0.5) {
-          targetLocation = newPos;
-        }
-
-        setState(() {
-          userAccuracy = position.accuracy;
-        });
+        if (dist > 0.5) targetLocation = newPos;
+        setState(() => userAccuracy = position.accuracy);
       }
     });
   }
@@ -185,9 +196,23 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         options: MapOptions(
           initialCenter: userLocation,
           initialZoom: 16.0,
-          interactionOptions: const InteractionOptions(
-            flags: InteractiveFlag.all,
-          ),
+          onMapEvent: (event) {
+            if (event.source == MapEventSource.onDrag) {
+              if (Fallow) setState(() => Fallow = false);
+              _startResumeTimer();
+            }
+            if (event.source == MapEventSource.onMultiFinger ||
+                event.source == MapEventSource.onDrag) {
+              _resumeTimer?.cancel();
+            }
+          },
+          onPositionChanged: (position, hasGesture) {
+            // Якщо користувач припинив рухати карту - запускаємо таймер повернення
+            if (hasGesture && !Fallow) {
+              _startResumeTimer();
+            }
+          },
+          interactionOptions: const InteractionOptions(flags: InteractiveFlag.all),
         ),
         children: [
           TileLayer(
@@ -206,17 +231,24 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
               ),
             ],
           ),
-          // ШАР ЗІ СКУТЕРАМИ (винесено окремим шаром)
           MarkerLayer(
-            key: ValueKey(vehicles.length),
-            markers: vehicles.map((v) => Marker(
-              point: v.position,
-              width: 40,
-              height: 40,
-              child: const Icon(Icons.electric_scooter, color: Colors.black, size: 30),
-            )).toList(),
+            markers: vehicles
+                .map((v) => Marker(
+                      point: v.position,
+                      width: 40,
+                      height: 40,
+                      child: Opacity(
+                        opacity: v.status.toLowerCase().contains("available") ? 1.0 : 0.3,
+                        child: Image.asset(
+                          getIconForVehicleType(v.type),
+                          width: 40,
+                          height: 40,
+                          fit: BoxFit.contain,
+                        ),
+                      ),
+                    ))
+                .toList(),
           ),
-          // ШАР КОРИСТУВАЧА
           MarkerLayer(
             markers: [
               Marker(
@@ -228,23 +260,15 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                   children: [
                     Transform.rotate(
                       angle: (userHeading * (math.pi / 180)),
-                      child: CustomPaint(
-                        size: const Size(120, 120),
-                        painter: Pointer(),
-                      ),
+                      child: CustomPaint(size: const Size(120, 120), painter: Pointer()),
                     ),
                     AnimatedBuilder(
                       animation: _pulseAnimation,
-                      builder: (context, child) {
-                        return Container(
-                          width: 22 * _pulseAnimation.value,
-                          height: 22 * _pulseAnimation.value,
-                          decoration: BoxDecoration(
-                            color: Colors.blueAccent.withOpacity(0.2),
-                            shape: BoxShape.circle,
-                          ),
-                        );
-                      },
+                      builder: (context, child) => Container(
+                        width: 22 * _pulseAnimation.value,
+                        height: 22 * _pulseAnimation.value,
+                        decoration: BoxDecoration(color: Colors.blueAccent.withOpacity(0.2), shape: BoxShape.circle),
+                      ),
                     ),
                     Container(
                       width: 18,
@@ -253,9 +277,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                         color: Colors.blueAccent,
                         shape: BoxShape.circle,
                         border: Border.all(color: Colors.white, width: 3),
-                        boxShadow: const [
-                          BoxShadow(color: Colors.black26, blurRadius: 6, offset: Offset(0, 2))
-                        ],
+                        boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 6, offset: Offset(0, 2))],
                       ),
                     ),
                   ],
@@ -268,8 +290,9 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       floatingActionButton: FloatingActionButton(
         backgroundColor: Colors.black,
         onPressed: () {
+          setState(() => Fallow = true);
           context.read<Controller>().fetchVehicles();
-          _animatedMapMove(userLocation, 17.0);
+          _animatedMapMove(userLocation, 18.0);
         },
         child: const Icon(Icons.my_location, color: Colors.white),
       ),
@@ -282,15 +305,9 @@ class Pointer extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final Paint paint = Paint()
       ..shader = RadialGradient(
-        colors: [
-          Colors.blueAccent.withOpacity(0.4),
-          Colors.blueAccent.withOpacity(0.0)
-        ],
+        colors: [Colors.blueAccent.withOpacity(0.4), Colors.blueAccent.withOpacity(0.0)],
         stops: const [0.2, 1.0],
-      ).createShader(Rect.fromCircle(
-        center: Offset(size.width / 2, size.height / 2),
-        radius: size.width / 2,
-      ));
+      ).createShader(Rect.fromCircle(center: Offset(size.width / 2, size.height / 2), radius: size.width / 2));
 
     final double centerX = size.width / 2;
     final double centerY = size.height / 2;
@@ -306,10 +323,8 @@ class Pointer extends CustomPainter {
         clockwise: false,
       )
       ..close();
-
     canvas.drawPath(path, paint);
   }
-
   @override
   bool shouldRepaint(CustomPainter oldDelegate) => false;
 }
