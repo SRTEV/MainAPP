@@ -115,4 +115,51 @@ class AuthController extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+
+  Future<void> ResetPassword(BuildContext context, String email) async {
+    clearMessage();
+
+    if (email.isEmpty) {
+      message = "Please enter your email";
+      emailBorderColor = Colors.red;
+      notifyListeners();
+      return;
+    }
+    if (!RegExp(emailRegex).hasMatch(email)) {
+      message = "Invalid email format";
+      emailBorderColor = Colors.red;
+      notifyListeners();
+      return;
+    }
+
+    final url = Uri.parse('http://$serverApi:5194/api/User/ResetPassword');
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: json.encode({
+          'Email': email,
+        }),
+      );
+
+      debugPrint("ResetPassword Status: ${response.statusCode}");
+
+      if (response.statusCode == 200) {
+        message = "Reset link has been sent to your email";
+        notifyListeners();
+        message = "Reset link has been sent to your email";
+      } else {
+        final errorData = json.decode(response.body);
+        message = errorData['message'] ?? "Failed to send reset email";
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint("ResetPassword error: $e");
+      message = "Connection failed";
+      notifyListeners();
+    }
+  }
+
 }

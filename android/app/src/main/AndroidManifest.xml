@@ -28,11 +28,13 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
+
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="mainapp" android:host="reset" />
             </intent-filter>
 
-            <meta-data
-                android:name="com.google.android.geo.API_KEY"
-                android:value="ВАШ_API_КЛЮЧ_ТУТ"/>
 
 
         </activity>

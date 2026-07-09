@@ -3,7 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'Register.dart';
 import 'AuthController.dart';
-
+import 'ResetPassword.dart';
 class Login extends StatefulWidget {
   const Login({super.key});
 
@@ -50,7 +50,7 @@ class _LoginState extends State<Login> {
                   ),
                 ),
 
-                const SizedBox(height: 40),
+                const SizedBox(height: 100),
                 Text("Your email:", style: texts),
                 const SizedBox(height: 8),
                 TextField(
@@ -152,7 +152,13 @@ class _LoginState extends State<Login> {
                         child: const Text("Register", style: TextStyle(color: Colors.black, fontWeight: FontWeight.w600)),
                       ),
                       TextButton(
-                        onPressed: () {},
+                        onPressed: () {
+                          _hideKeyboard();
+                          Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const Resetpassword()),
+                          );
+                        },
                         style: TextButton.styleFrom(
                           padding: EdgeInsets.zero,
                           minimumSize: const Size(0, 30),
@@ -163,7 +169,7 @@ class _LoginState extends State<Login> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 190),
+                const SizedBox(height: 155),
                 Align(
                   alignment: Alignment.centerRight,
                   child: TextButton(
