@@ -18,15 +18,13 @@ class MapPage extends StatefulWidget {
 }
 
 class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
-  final String mapboxToken = dotenv.env['TOKEN_MAP']!;
+  final String mapboxToken = dotenv.env['TOKEN_MAP'] ?? '';
   LatLng userLocation = const LatLng(51.23547305664311, 22.548898519702192);
   LatLng targetLocation = const LatLng(51.23547305664311, 22.548898519702192);
   double userHeading = 0.0;
   double targetHeading = 0.0;
-  double userAccuracy = 20.0;
   bool Fallow = true;
   Timer? _resumeTimer;
-
   final MapController _mapController = MapController();
   StreamSubscription<Position>? _positionStream;
   StreamSubscription<CompassEvent>? _compassStream;
@@ -78,6 +76,24 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     });
   }
 
+  Future<void> _initLocation() async {
+    Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.bestForNavigation);
+    setState(() {
+      userLocation = LatLng(position.latitude, position.longitude);
+      targetLocation = userLocation;
+    });
+
+    _positionStream = Geolocator.getPositionStream(
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.bestForNavigation, distanceFilter: 0)
+    ).listen((p) => setState(() {
+      targetLocation = LatLng(p.latitude, p.longitude);
+    }));
+  }
+
+  void _initCompass() {
+    _compassStream = FlutterCompass.events?.listen((e) => targetHeading = e.heading ?? 0.0);
+  }
+
   @override
   void dispose() {
     _positionStream?.cancel();
@@ -88,61 +104,42 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     super.dispose();
   }
 
-  // --- Методи ініціалізації ---
-  Future<void> _initLocation() async {
-    Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.bestForNavigation);
-    setState(() {
-      userLocation = LatLng(position.latitude, position.longitude);
-      targetLocation = userLocation;
-    });
-
-    _positionStream = Geolocator.getPositionStream(
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.bestForNavigation,
-        distanceFilter: 0 // Отримуємо всі мікро-зміни для максимальної плавності
-      )
-    ).listen((p) => setState(() {
-      targetLocation = LatLng(p.latitude, p.longitude);
-      userAccuracy = p.accuracy;
-    }));
-  }
-
-  void _initCompass() {
-    _compassStream = FlutterCompass.events?.listen((e) => targetHeading = e.heading ?? 0.0);
-  }
-
   @override
   Widget build(BuildContext context) {
     final vehicles = context.watch<Controller>().vehicles;
 
     return Scaffold(
-      body: FlutterMap(
-        mapController: _mapController,
-        options: MapOptions(
-          initialCenter: userLocation,
-          initialZoom: 16.0,
-          onMapEvent: (event) {
-            if (event.source == MapEventSource.onDrag) {
-              setState(() => Fallow = false);
-              _startResumeTimer();
-            }
-          },
-          interactionOptions: const InteractionOptions(flags: InteractiveFlag.all),
-        ),
+      body: Stack(
         children: [
-          TileLayer(urlTemplate: 'https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/{z}/{x}/{y}?access_token={accessToken}', additionalOptions: {'accessToken': mapboxToken}),
-
-          MarkerLayer(
-            markers: vehicles.map((v) => Marker(
-              point: v.position,
-              width: 40, height: 40,
-              child: Image.asset(getIconForVehicleType(v.type)),
-            )).toList(),
+          FlutterMap(
+            mapController: _mapController,
+            options: MapOptions(
+              initialCenter: userLocation,
+              initialZoom: 16.0,
+              onMapEvent: (event) {
+                if (event.source == MapEventSource.onDrag) {
+                  setState(() => Fallow = false);
+                  _startResumeTimer();
+                }
+              },
+            ),
+            children: [
+              TileLayer(
+                  urlTemplate: 'https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/{z}/{x}/{y}?access_token={accessToken}',
+                  additionalOptions: {'accessToken': mapboxToken}
+              ),
+              MarkerLayer(
+                markers: vehicles.map((v) => Marker(
+                  point: v.position,
+                  width: 40, height: 40,
+                  child: Image.asset(getIconForVehicleType(v.type)),
+                )).toList(),
+              ),
+              MarkerLayer(markers: [
+                Marker(point: userLocation, width: 120, height: 120, child: _buildUserPointer())
+              ]),
+            ],
           ),
-
-          MarkerLayer(markers: [
-            Marker(point: userLocation, width: 120, height: 120, child: _buildUserPointer())
-          ]),
         ],
       ),
       floatingActionButton: FloatingActionButton(
@@ -150,6 +147,30 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         onPressed: () => setState(() => Fallow = true),
         child: const Icon(Icons.my_location, color: Colors.white),
       ),
+      bottomNavigationBar: SizedBox(
+        height: 90,
+        child: Theme(
+          data: Theme.of(context).copyWith(
+            canvasColor: Colors.black,
+          ),
+          child: BottomNavigationBar(
+            type: BottomNavigationBarType.fixed,
+            selectedItemColor: Colors.white,
+            unselectedItemColor: Colors.white,
+            iconSize: 32,
+            selectedFontSize: 14,
+            unselectedFontSize: 14,
+            items: const [
+              BottomNavigationBarItem(icon: Padding(padding: EdgeInsets.only(bottom: 4), child: Icon(Icons.emoji_events)), label: 'Challenges'),
+              BottomNavigationBarItem(icon: Padding(padding: EdgeInsets.only(bottom: 4), child: Icon(Icons.history)), label: 'History'),
+              BottomNavigationBarItem(icon: Padding(padding: EdgeInsets.only(bottom: 4), child: Icon(Icons.camera_alt)), label: 'Scan'),
+              BottomNavigationBarItem(icon: Padding(padding: EdgeInsets.only(bottom: 4), child: Icon(Icons.person)), label: 'Account'),
+            ],
+          ),
+        ),
+      ),
+
+
     );
   }
 
@@ -170,21 +191,17 @@ class Pointer extends CustomPainter {
     final centerX = size.width / 2;
     final centerY = size.height / 2;
     final radius = size.width / 2;
-
     final Paint paint = Paint()
       ..shader = RadialGradient(
         colors: [Colors.blueAccent.withOpacity(0.6), Colors.blueAccent.withOpacity(0.0)],
         stops: const [0.3, 1.0],
       ).createShader(Rect.fromCircle(center: Offset(centerX, centerY), radius: radius));
-
     const double angleWidth = 25.0 * (math.pi / 180);
-
     final Path path = Path()
       ..moveTo(centerX, centerY)
       ..lineTo(centerX + radius * math.sin(angleWidth), centerY - radius * math.cos(angleWidth))
       ..arcToPoint(Offset(centerX - radius * math.sin(angleWidth), centerY - radius * math.cos(angleWidth)), radius: Radius.circular(radius), clockwise: false)
       ..close();
-
     canvas.drawPath(path, paint);
   }
   @override
