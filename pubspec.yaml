@@ -33,7 +33,6 @@ dependencies:
   provider: ^6.1.2
   geolocator: ^11.0.0
   http: ^1.2.0
-  mysql1: ^0.20.0
   flutter_dotenv: ^5.1.0
   google_fonts: ^6.2.1
   crypto: ^3.0.3

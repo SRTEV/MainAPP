@@ -1,78 +1,85 @@
 import 'dart:convert';
-import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
-import 'package:mysql1/mysql1.dart';
-import 'db.dart';
+import 'package:http/http.dart' as http;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'map.dart';
 
 class AuthController extends ChangeNotifier {
   String message = '';
-  final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
   Color emailBorderColor = Colors.black;
   Color passwordBorderColor = Colors.black;
   Color nameBorderColor = Colors.black;
+  String emailRegex = r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$';
+  String get serverApi => dotenv.env['SERVER']!;
 
   void clearMessage() {
     message = '';
-     emailBorderColor = Colors.black;
-     passwordBorderColor = Colors.black;
-     nameBorderColor = Colors.black;
+    emailBorderColor = Colors.black;
+    passwordBorderColor = Colors.black;
+    nameBorderColor = Colors.black;
     notifyListeners();
-  }
-
-  String _hashPassword(String password) {
-    var bytes = utf8.encode(password);
-    var digest = sha256.convert(bytes);
-    return digest.toString();
   }
 
   Future<void> Register(BuildContext context, String name, String email, String password, String confirmPassword) async {
     clearMessage();
     if (name.isEmpty || email.isEmpty || password.isEmpty || confirmPassword.isEmpty) {
       message = "Please fill in all fields";
+      nameBorderColor = Colors.red;
       emailBorderColor = Colors.red;
       passwordBorderColor = Colors.red;
-      nameBorderColor = Colors.red;
       notifyListeners();
       return;
     }
-
+    if (password.length < 5) {
+      message = "Password must be at least 5 characters long";
+      passwordBorderColor = Colors.red;
+      notifyListeners();
+      return;
+    }
     if (password != confirmPassword) {
       message = "Passwords do not match";
       passwordBorderColor = Colors.red;
       notifyListeners();
       return;
     }
-
-    if (!emailRegex.hasMatch(email)) {
+    if (!RegExp(emailRegex).hasMatch(email)) {
       message = "Invalid email format";
       emailBorderColor = Colors.red;
       notifyListeners();
       return;
     }
 
-    MySqlConnection? conn;
+    final url = Uri.parse('http://$serverApi:5194/api/User/register');
     try {
-      conn = await MySqlConnection.connect(DatabaseHelper.settings);
-      String hashedPassword = _hashPassword(password);
-
-      await conn.query(
-        'INSERT INTO User (name, Password_hash, email, created_at, updated_at, Oustanding_balances, is_Blocked, RoleID) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-        [name, hashedPassword, email, DateTime.now().toUtc(), DateTime.now().toUtc(), 0, 0, 1],
+      final response = await http.post(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: json.encode({
+          'Name': name,
+          'Email': email,
+          'Password': password,
+        }),
       );
 
-      message = "Registration successful!";
+      debugPrint("Register Status: ${response.statusCode}");
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const MapPage()));
+      } else {
+        final errorData = json.decode(response.body);
+        message = errorData['message'] ?? "Registration failed";
+        notifyListeners();
+      }
     } catch (e) {
-      debugPrint("Database error: $e");
-      message = "Error connecting to database";
-    } finally {
-      await conn?.close();
+      debugPrint("Register error: $e");
+      message = "Connection failed";
+      notifyListeners();
     }
-    notifyListeners();
   }
 
   Future<void> Login(BuildContext context, String email, String password) async {
     clearMessage();
+
+    final url = Uri.parse('http://$serverApi:5194/api/User/login');
     if (email.isEmpty || password.isEmpty) {
       message = "Please fill in all fields";
       emailBorderColor = Colors.red;
@@ -80,38 +87,32 @@ class AuthController extends ChangeNotifier {
       notifyListeners();
       return;
     }
-
-    if (!emailRegex.hasMatch(email)) {
-      message = "Invalid email format";
-      emailBorderColor = Colors.red;
-      notifyListeners();
-      return;
-    }
-
-    MySqlConnection? conn;
     try {
-      conn = await MySqlConnection.connect(DatabaseHelper.settings);
-      String hashedPassword = _hashPassword(password);
-
-      var results = await conn.query(
-        'SELECT * FROM User WHERE Email = ? AND Password_hash = ?',
-        [email, hashedPassword],
+      final response = await http.post(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: json.encode({
+          'Email': email,
+          'Password': password,
+        }),
       );
 
-      if (results.isNotEmpty) {
+      debugPrint("Login Status: ${response.statusCode}");
+
+      if (response.statusCode == 200) {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const MapPage()),
         );
-      } else {
-        message = "Invalid email or password";
+      } else if(response.statusCode == 401){
+        final errorData = json.decode(response.body);
+        message = errorData['message'] ?? "Invalid email or password";
+        notifyListeners();
       }
     } catch (e) {
-      debugPrint("Database error: $e");
-      message = "Error connecting to database";
-    } finally {
-      await conn?.close();
+      debugPrint("Login error: $e");
+      message = "Connection failed. Is the server running?";
+      notifyListeners();
     }
-    notifyListeners();
   }
 }

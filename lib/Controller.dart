@@ -1,11 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
-import 'package:mysql1/mysql1.dart';
-import 'db.dart';
-import 'map.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class VehicleModel {
   final int id;
@@ -19,65 +17,52 @@ class VehicleModel {
     required this.status,
     required this.type,
   });
+
+  factory VehicleModel.fromJson(Map<String, dynamic> json) {
+    double parseDouble(dynamic value) {
+      if (value == null) return 0.0;
+      String strValue = value.toString().replaceAll(',', '.');
+      return double.tryParse(strValue) ?? 0.0;
+    }
+
+    return VehicleModel(
+      id: json['id'] ?? 0,
+      position: LatLng(
+        parseDouble(json['positionX']),
+        parseDouble(json['positionY']),
+      ),
+      status: json['vechicleStatus']?['name'] ?? 'Unknown',
+      type: json['vehicleType']?['name'] ?? 'Unknown',
+    );
+  }
 }
 
 class Controller extends ChangeNotifier {
   List<VehicleModel> vehicles = [];
   Timer? _vehicleTimer;
-
-  // Запуск автоматичного оновлення кожні 10 секунд
-  void startVehiclePolling() {
-    _vehicleTimer?.cancel();
-    _vehicleTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
-      fetchVehicles();
-    });
-    debugPrint("Vehicle real-time updates started");
-  }
-
-  // Зупинка оновлення
-  void stopVehiclePolling() {
-    _vehicleTimer?.cancel();
-    _vehicleTimer = null;
-    debugPrint("Vehicle real-time updates stopped");
-  }
+  String get serverApi => dotenv.env['SERVER']!;
 
   Future<void> fetchVehicles() async {
-    MySqlConnection? conn;
+    final url = Uri.parse('http://$serverApi:5194/api/Vehicle');
     try {
-      conn = await MySqlConnection.connect(DatabaseHelper.settings);
-      
-      var results = await conn.query('''
-        SELECT v.id, v.Position_X, v.Position_Y, t.Name as TypeName, s.Name as StatusName
-        FROM Vehicle v
-        JOIN Vechicle_Status s ON v.Vechicle_StatusID = s.id
-        JOIN Vehicle_Type t ON v.Vehicle_TypeID = t.id
-        WHERE v.Deleted = 0;
-      ''');
+      final response = await http.get(url);
 
-      vehicles = results.map((row) {
-        return VehicleModel(
-          id: row[0],
-          position: LatLng(double.parse(row[1].toString()), double.parse(row[2].toString())),
-          status: row[4].toString(),
-          type: row[3].toString(),
-        );
-      }).toList();
-
-      debugPrint("Fetched ${vehicles.length} vehicles");
-      for (var v in vehicles) {
-        debugPrint("Vehicle ID: ${v.id}, Status: ${v.status}, Type: ${v.type}");
+      if (response.statusCode == 200) {
+        List<dynamic> data = json.decode(response.body);
+        vehicles = data.map((item) => VehicleModel.fromJson(item)).toList();
+        debugPrint("API Status: ${response.statusCode}");
+        for (var v in vehicles) {
+          debugPrint("Vehicle ID: ${v.id}, Position: ${v.position}");
+        }
+        notifyListeners();
       }
     } catch (e) {
-      debugPrint("Database error: $e");
-    } finally {
-      await conn?.close();
+      debugPrint("API Error: $e");
     }
-    notifyListeners();
   }
 
-  @override
-  void dispose() {
-    stopVehiclePolling();
-    super.dispose();
+  void startVehiclePolling() {
+    _vehicleTimer?.cancel();
+    _vehicleTimer = Timer.periodic(const Duration(seconds: 5), (_) => fetchVehicles());
   }
 }
