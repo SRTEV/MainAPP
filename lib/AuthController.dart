@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'map.dart';
+import 'dart:convert';
+import 'package:bcrypt/bcrypt.dart';
 
 class AuthController extends ChangeNotifier {
   String message = '';
@@ -10,7 +12,9 @@ class AuthController extends ChangeNotifier {
   Color passwordBorderColor = Colors.black;
   Color nameBorderColor = Colors.black;
   String emailRegex = r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$';
+
   String get serverApi => dotenv.env['SERVER']!;
+  int? userId;
 
   void clearMessage() {
     message = '';
@@ -20,9 +24,16 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> Register(BuildContext context, String name, String email, String password, String confirmPassword) async {
+  String hash_pass(String password) {
+    final String salt = dotenv.env['SALT']!;
+    return BCrypt.hashpw(password, salt);
+  }
+
+  Future<void> Register(BuildContext context, String name, String email,
+      String password, String confirmPassword) async {
     clearMessage();
-    if (name.isEmpty || email.isEmpty || password.isEmpty || confirmPassword.isEmpty) {
+    if (name.isEmpty || email.isEmpty || password.isEmpty ||
+        confirmPassword.isEmpty) {
       message = "Please fill in all fields";
       nameBorderColor = Colors.red;
       emailBorderColor = Colors.red;
@@ -49,7 +60,7 @@ class AuthController extends ChangeNotifier {
       return;
     }
 
-    final url = Uri.parse('http://$serverApi:5194/api/User/register');
+    final url = Uri.parse('http://$serverApi:5194/api/User/register/app');
     try {
       final response = await http.post(
         url,
@@ -57,13 +68,14 @@ class AuthController extends ChangeNotifier {
         body: json.encode({
           'Name': name,
           'Email': email,
-          'Password': password,
+          'Password': hash_pass(password),
         }),
       );
 
       debugPrint("Register Status: ${response.statusCode}");
       if (response.statusCode == 200 || response.statusCode == 201) {
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const MapPage()));
+        Navigator.pushReplacement(
+            context, MaterialPageRoute(builder: (context) => const MapPage()));
       } else {
         final errorData = json.decode(response.body);
         message = errorData['message'] ?? "Registration failed";
@@ -76,10 +88,11 @@ class AuthController extends ChangeNotifier {
     }
   }
 
-  Future<void> Login(BuildContext context, String email, String password) async {
+  Future<void> Login(BuildContext context, String email,
+      String password) async {
     clearMessage();
 
-    final url = Uri.parse('http://$serverApi:5194/api/User/login');
+    final url = Uri.parse('http://$serverApi:5194/api/User/login/app');
     if (email.isEmpty || password.isEmpty) {
       message = "Please fill in all fields";
       emailBorderColor = Colors.red;
@@ -93,7 +106,7 @@ class AuthController extends ChangeNotifier {
         headers: {"Content-Type": "application/json"},
         body: json.encode({
           'Email': email,
-          'Password': password,
+          'Password': hash_pass(password),
         }),
       );
 
@@ -104,7 +117,7 @@ class AuthController extends ChangeNotifier {
           context,
           MaterialPageRoute(builder: (context) => const MapPage()),
         );
-      } else if(response.statusCode == 401){
+      } else if (response.statusCode == 401) {
         final errorData = json.decode(response.body);
         message = errorData['message'] ?? "Invalid email or password";
         notifyListeners();
@@ -162,4 +175,77 @@ class AuthController extends ChangeNotifier {
     }
   }
 
+  Future<void> ChangePassword(BuildContext context,
+      String newPassword,
+      String confirmPassword,
+      String email
+      ) async {
+    if (newPassword.isEmpty || confirmPassword.isEmpty) {
+      message = "Please fill in all fields";
+      passwordBorderColor = Colors.red;
+      notifyListeners();
+      return;
+    }
+
+    if (newPassword.length < 5) {
+      message = "Password must be at least 5 characters long";
+      passwordBorderColor = Colors.red;
+      notifyListeners();
+      return;
+    }
+
+    if (newPassword != confirmPassword) {
+      message = "Passwords do not match";
+      passwordBorderColor = Colors.red;
+      notifyListeners();
+      return;
+    }
+
+    final url = Uri.parse('http://$serverApi:5194/api/User/ChangePassword');
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: json.encode({
+          'Email': email,
+          'NewPassword': hash_pass(newPassword),
+        }),
+      );
+
+      debugPrint("Status: ${response.statusCode}, Body: ${response.body}");
+
+
+      if (response.statusCode == 200) {
+        message = "Password changed successfully!";
+        notifyListeners();
+      } else {
+
+        message = "Error: ${response.statusCode}";
+        passwordBorderColor = Colors.red;
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint("ChangePassword Exception: $e");
+      message = "Connection error. Please try again.";
+      passwordBorderColor = Colors.red;
+      notifyListeners();
+    }
+
+
+
+  }
+  Future<String?> GetEmailByToken(String token) async {
+    final url = Uri.parse('http://$serverApi:5194/api/User/GetEmailByToken/$token');
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data['email'];
+      }
+    } catch (e) {
+      debugPrint("Error fetching email: $e");
+    }
+    return null;
+  }
 }

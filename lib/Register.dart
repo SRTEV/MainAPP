@@ -32,7 +32,7 @@ class _RegisterState extends State<Register> {
 
 
       ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 7, vertical: 7),
     );
   }
 

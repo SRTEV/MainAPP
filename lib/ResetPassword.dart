@@ -38,7 +38,9 @@ class _ResetpasswordState extends State<Resetpassword> {
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
                       icon: const Icon(Icons.arrow_circle_left_outlined, size: 36),
-                      onPressed: () => Navigator.pop(context),
+                      onPressed: () => {Navigator.pop(context),
+                      viewModel.clearMessage()
+                      }
                     ),
                     Text(
                       "Reset password",
@@ -71,13 +73,13 @@ class _ResetpasswordState extends State<Resetpassword> {
                     fillColor: Colors.grey.shade200,
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(20),
-                      borderSide: BorderSide(color: viewModel.passwordBorderColor, width: 1.5),
+                      borderSide: BorderSide(color: viewModel.emailBorderColor, width: 1.5),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(20),
-                      borderSide: BorderSide(color: viewModel.passwordBorderColor, width: 3),
+                      borderSide: BorderSide(color: viewModel.emailBorderColor, width: 3),
                     ),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 7, vertical: 7),
                   ),
                 ),
 
@@ -102,6 +104,7 @@ class _ResetpasswordState extends State<Resetpassword> {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
                       onPressed: () {
+                        viewModel.clearMessage();
                         _hideKeyboard();
                         Provider.of<AuthController>(context, listen: false).ResetPassword(context, _emailController.text);
                       },
