@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:mainapp/Login.dart' hide Login;
 import 'package:provider/provider.dart';
-import 'AuthController.dart';
+import '../Controllers/AuthController.dart';
 import 'Login.dart';
 
 class ChangePasswordReset extends StatefulWidget {
@@ -54,8 +53,10 @@ class _ChangePasswordResetState extends State<ChangePasswordReset> {
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
                       icon: const Icon(Icons.arrow_circle_left_outlined, size: 36),
-                      onPressed: () => {Navigator.pop(context),
-                      viewModel.clearMessage()}
+                      onPressed: () {
+                        Navigator.pop(context);
+                        viewModel.clearMessage();
+                      }
                     ),
                     const SizedBox(width: 10),
                     Text(

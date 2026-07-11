@@ -1,13 +1,12 @@
-import 'package:mainapp/ChangePasswordReset.dart' hide changePasswordReset, ChangePasswordReset;
 import 'package:provider/provider.dart';
 import 'package:flutter/material.dart';
-import 'Login.dart';
-import 'Register.dart';
-import 'Controller.dart';
-import 'package:flutter/foundation.dart';
+import 'ViewModels/Login.dart';
+import 'ViewModels/Register.dart';
+import 'Controllers/Controller.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'AuthController.dart';
-import 'ChangePasswordReset.dart';
+import 'Controllers/AuthController.dart';
+import 'ViewModels/ChangePasswordReset.dart';
+import 'Controllers/UserController.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -16,6 +15,7 @@ void main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => Controller()),
+        ChangeNotifierProvider(create: (_) => UserController()),
         ChangeNotifierProvider(create: (_) => AuthController()),
       ],
       child: MaterialApp(

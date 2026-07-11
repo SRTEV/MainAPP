@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'Register.dart';
-import 'AuthController.dart';
+import '../Controllers/AuthController.dart';
 import 'ResetPassword.dart';
 class Login extends StatefulWidget {
   const Login({super.key});

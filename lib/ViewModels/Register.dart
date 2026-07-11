@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-import 'AuthController.dart';
+import '../Controllers/AuthController.dart';
 
 class Register extends StatefulWidget {
   const Register({super.key});

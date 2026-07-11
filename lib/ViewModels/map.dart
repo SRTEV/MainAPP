@@ -8,7 +8,8 @@ import 'package:geolocator/geolocator.dart';
 import 'package:flutter_compass/flutter_compass.dart';
 import 'package:provider/provider.dart';
 import 'dart:math' as math;
-import 'Controller.dart';
+import '../Controllers/Controller.dart';
+import 'Profile.dart';
 
 class MapPage extends StatefulWidget {
   const MapPage({super.key});
@@ -93,7 +94,22 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   void _initCompass() {
     _compassStream = FlutterCompass.events?.listen((e) => targetHeading = e.heading ?? 0.0);
   }
-
+  void _onItemTapped(int index, BuildContext context) {
+    switch (index) {
+      case 0:
+       debugPrint("0");
+        break;
+      case 1:
+       debugPrint("1");
+        break;
+      case 2:
+       debugPrint("2");
+        break;
+      case 3:
+       Navigator.push(context, MaterialPageRoute(builder: (context) => const Profile()));
+        break;
+    }
+  }
   @override
   void dispose() {
     _positionStream?.cancel();
@@ -160,6 +176,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
             iconSize: 32,
             selectedFontSize: 14,
             unselectedFontSize: 14,
+            onTap: (index) => _onItemTapped(index, context),
             items: const [
               BottomNavigationBarItem(icon: Padding(padding: EdgeInsets.only(bottom: 4), child: Icon(Icons.emoji_events)), label: 'Challenges'),
               BottomNavigationBarItem(icon: Padding(padding: EdgeInsets.only(bottom: 4), child: Icon(Icons.history)), label: 'History'),

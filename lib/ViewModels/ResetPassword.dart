@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'AuthController.dart';
+import '../Controllers/AuthController.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class Resetpassword extends StatefulWidget {
