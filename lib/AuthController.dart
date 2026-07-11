@@ -14,7 +14,16 @@ class AuthController extends ChangeNotifier {
   String emailRegex = r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$';
 
   String get serverApi => dotenv.env['SERVER']!;
-  int? userId;
+  String? tempEmail;
+  int? tempId;
+
+
+  void saveSomeData(String email, int? id) {
+    tempEmail = email;
+    tempId = id;
+    notifyListeners();
+  }
+
 
   void clearMessage() {
     message = '';
@@ -74,6 +83,8 @@ class AuthController extends ChangeNotifier {
 
       debugPrint("Register Status: ${response.statusCode}");
       if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = json.decode(response.body);
+        saveSomeData(email, data['userId']);
         Navigator.pushReplacement(
             context, MaterialPageRoute(builder: (context) => const MapPage()));
       } else {
@@ -113,6 +124,8 @@ class AuthController extends ChangeNotifier {
       debugPrint("Login Status: ${response.statusCode}");
 
       if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        saveSomeData(email, data['userId']);
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const MapPage()),
@@ -160,9 +173,10 @@ class AuthController extends ChangeNotifier {
       debugPrint("ResetPassword Status: ${response.statusCode}");
 
       if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        saveSomeData(email, data['userId']);
         message = "Reset link has been sent to your email";
         notifyListeners();
-        message = "Reset link has been sent to your email";
       } else {
         final errorData = json.decode(response.body);
         message = errorData['message'] ?? "Failed to send reset email";
@@ -178,8 +192,7 @@ class AuthController extends ChangeNotifier {
   Future<void> ChangePassword(BuildContext context,
       String newPassword,
       String confirmPassword,
-      String email
-      ) async {
+      String email) async {
     if (newPassword.isEmpty || confirmPassword.isEmpty) {
       message = "Please fill in all fields";
       passwordBorderColor = Colors.red;
@@ -220,7 +233,6 @@ class AuthController extends ChangeNotifier {
         message = "Password changed successfully!";
         notifyListeners();
       } else {
-
         message = "Error: ${response.statusCode}";
         passwordBorderColor = Colors.red;
         notifyListeners();
@@ -231,21 +243,5 @@ class AuthController extends ChangeNotifier {
       passwordBorderColor = Colors.red;
       notifyListeners();
     }
-
-
-
-  }
-  Future<String?> GetEmailByToken(String token) async {
-    final url = Uri.parse('http://$serverApi:5194/api/User/GetEmailByToken/$token');
-    try {
-      final response = await http.get(url);
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        return data['email'];
-      }
-    } catch (e) {
-      debugPrint("Error fetching email: $e");
-    }
-    return null;
   }
 }

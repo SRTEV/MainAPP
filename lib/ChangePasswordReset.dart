@@ -96,11 +96,11 @@ class _ChangePasswordResetState extends State<ChangePasswordReset> {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
                       onPressed: ()  async {
+                        final authProvider = Provider.of<AuthController>(context, listen: false);
                         viewModel.clearMessage();
                         _hideKeyboard();
 
-                        String? email = await viewModel.GetEmailByToken(widget.token);
-
+                        final email = authProvider.tempEmail;
                         if (email != null) {
                           Provider.of<AuthController>(context, listen: false).ChangePassword(
                             context,
