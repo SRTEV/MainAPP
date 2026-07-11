@@ -175,7 +175,15 @@ class _ProfileState extends State<Profile> {
               children: [
                 ElevatedButton(
                   onPressed: () {
-                    debugPrint("Log out");
+
+                    Provider.of<AuthController>(context, listen: false).clearMessage();
+                    Provider.of<AuthController>(context, listen: false).clearSomeData();
+
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(builder: (context) => const Login()),
+                          (route) => false,
+                    );
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.black,

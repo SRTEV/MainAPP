@@ -22,7 +22,11 @@ class AuthController extends ChangeNotifier {
     tempId = id;
     notifyListeners();
   }
-
+  void clearSomeData() {
+    tempEmail = null;
+    tempId = null;
+    notifyListeners();
+  }
 
   void clearMessage() {
     message = '';
@@ -243,4 +247,7 @@ class AuthController extends ChangeNotifier {
       notifyListeners();
     }
   }
-}
+
+
+  }
+
