@@ -19,6 +19,7 @@ class _ResetpasswordState extends State<Resetpassword> {
 
   @override
   Widget build(BuildContext context) {
+
     final viewModel = context.watch<AuthController>();
 
     return GestureDetector(

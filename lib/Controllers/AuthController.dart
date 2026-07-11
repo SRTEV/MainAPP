@@ -2,14 +2,18 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:provider/provider.dart';
 import '../ViewModels/map.dart';
 import 'package:bcrypt/bcrypt.dart';
+import 'UserController.dart';
+
 
 class AuthController extends ChangeNotifier {
   String message = '';
   Color emailBorderColor = Colors.black;
   Color passwordBorderColor = Colors.black;
   Color nameBorderColor = Colors.black;
+  Color confirmBorderColor = Colors.black;
   String emailRegex = r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$';
 
   String get serverApi => dotenv.env['SERVER']!;
@@ -22,6 +26,7 @@ class AuthController extends ChangeNotifier {
     tempId = id;
     notifyListeners();
   }
+
   void clearSomeData() {
     tempEmail = null;
     tempId = null;
@@ -36,8 +41,17 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setMessage(String msg , {bool isError = false}) {
+    message = msg;
+    notifyListeners();
+  }
+
   String hash_pass(String password) {
-    final String salt = dotenv.env['SALT']!;
+    final String? salt = dotenv.env['SALT'];
+    if (salt == null) {
+      debugPrint("ERROR: SALT is missing in .env");
+      return password;
+    }
     return BCrypt.hashpw(password, salt);
   }
 
@@ -46,29 +60,26 @@ class AuthController extends ChangeNotifier {
     clearMessage();
     if (name.isEmpty || email.isEmpty || password.isEmpty ||
         confirmPassword.isEmpty) {
-      message = "Please fill in all fields";
-      nameBorderColor = Colors.red;
-      emailBorderColor = Colors.red;
-      passwordBorderColor = Colors.red;
-      notifyListeners();
+      if (name.isEmpty) nameBorderColor = Colors.red;
+      if (email.isEmpty) emailBorderColor = Colors.red;
+      if (password.isEmpty) passwordBorderColor = Colors.red;
+      setMessage("Please fill in all fields", isError: true);
       return;
     }
     if (password.length < 5) {
-      message = "Password must be at least 5 characters long";
+      setMessage("Password must be at least 5 characters long", isError: true);
       passwordBorderColor = Colors.red;
-      notifyListeners();
       return;
     }
     if (password != confirmPassword) {
-      message = "Passwords do not match";
+      setMessage("Passwords do not match", isError: true);
       passwordBorderColor = Colors.red;
-      notifyListeners();
       return;
     }
     if (!RegExp(emailRegex).hasMatch(email)) {
-      message = "Invalid email format";
       emailBorderColor = Colors.red;
-      notifyListeners();
+      setMessage("Invalid email format", isError: true);
+      emailBorderColor = Colors.red;
       return;
     }
 
@@ -87,31 +98,30 @@ class AuthController extends ChangeNotifier {
       debugPrint("Register Status: ${response.statusCode}");
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = json.decode(response.body);
-        saveSomeData(email, data['userId']);
+        saveSomeData(email, data['userId']);//замінити
+        setMessage("Registration successful!");
         Navigator.pushReplacement(
             context, MaterialPageRoute(builder: (context) => const MapPage()));
       } else {
         final errorData = json.decode(response.body);
-        message = errorData['message'] ?? "Registration failed";
-        notifyListeners();
+        setMessage(errorData['message'] ?? "Registration failed", isError: true);
       }
     } catch (e) {
       debugPrint("Register error: $e");
-      message = "Connection failed";
-      notifyListeners();
+      setMessage("Connection failed", isError: true);
     }
   }
 
   Future<void> Login(BuildContext context, String email,
       String password) async {
+    final userModel = Provider.of<UserController>(context, listen: false);
     clearMessage();
-
     final url = Uri.parse('http://$serverApi:5194/api/User/login/app');
     if (email.isEmpty || password.isEmpty) {
-      message = "Please fill in all fields";
-      emailBorderColor = Colors.red;
-      passwordBorderColor = Colors.red;
-      notifyListeners();
+      if (email.isEmpty) emailBorderColor = Colors.red;
+      if (password.isEmpty) passwordBorderColor = Colors.red;
+      setMessage("Please fill in all fields", isError: true);
+
       return;
     }
     try {
@@ -125,7 +135,11 @@ class AuthController extends ChangeNotifier {
       );
 
       debugPrint("Login Status: ${response.statusCode}");
-
+      if (!RegExp(emailRegex).hasMatch(email)) {
+        emailBorderColor = Colors.red;
+        setMessage("Invalid email format", isError: true);
+        return;
+      }
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         saveSomeData(email, data['userId']);
@@ -135,30 +149,27 @@ class AuthController extends ChangeNotifier {
         );
       } else if (response.statusCode == 401) {
         final errorData = json.decode(response.body);
-        message = errorData['message'] ?? "Invalid email or password";
-        notifyListeners();
+        setMessage(errorData['message'] ?? "Invalid email or password", isError: true);
+      } else {
+        setMessage("Error: ${response.statusCode}", isError: true);
       }
     } catch (e) {
       debugPrint("Login error: $e");
-      message = "Connection failed. Is the server running?";
-      notifyListeners();
+      setMessage("Connection failed. Is the server running?", isError: true);
     }
   }
-
 
   Future<void> ResetPassword(BuildContext context, String email) async {
     clearMessage();
 
     if (email.isEmpty) {
-      message = "Please enter your email";
       emailBorderColor = Colors.red;
-      notifyListeners();
+      setMessage("Please enter your email", isError: true);
       return;
     }
     if (!RegExp(emailRegex).hasMatch(email)) {
-      message = "Invalid email format";
       emailBorderColor = Colors.red;
-      notifyListeners();
+      setMessage("Invalid email format", isError: true);
       return;
     }
 
@@ -178,17 +189,14 @@ class AuthController extends ChangeNotifier {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         saveSomeData(email, data['userId']);
-        message = "Reset link has been sent to your email";
-        notifyListeners();
+        setMessage("Reset link has been sent to your email");
       } else {
         final errorData = json.decode(response.body);
-        message = errorData['message'] ?? "Failed to send reset email";
-        notifyListeners();
+        setMessage(errorData['message'] ?? "Failed to send reset email", isError: true);
       }
     } catch (e) {
       debugPrint("ResetPassword error: $e");
-      message = "Connection failed";
-      notifyListeners();
+      setMessage("Connection failed", isError: true);
     }
   }
 
@@ -197,23 +205,17 @@ class AuthController extends ChangeNotifier {
       String confirmPassword,
       String email) async {
     if (newPassword.isEmpty || confirmPassword.isEmpty) {
-      message = "Please fill in all fields";
-      passwordBorderColor = Colors.red;
-      notifyListeners();
+      setMessage("Please fill in all fields", isError: true);
       return;
     }
 
     if (newPassword.length < 5) {
-      message = "Password must be at least 5 characters long";
-      passwordBorderColor = Colors.red;
-      notifyListeners();
+      setMessage("Password must be at least 5 characters long", isError: true);
       return;
     }
 
     if (newPassword != confirmPassword) {
-      message = "Passwords do not match";
-      passwordBorderColor = Colors.red;
-      notifyListeners();
+      setMessage("Passwords do not match", isError: true);
       return;
     }
 
@@ -231,23 +233,14 @@ class AuthController extends ChangeNotifier {
 
       debugPrint("Status: ${response.statusCode}, Body: ${response.body}");
 
-
       if (response.statusCode == 200) {
-        message = "Password changed successfully!";
-        notifyListeners();
+        setMessage("Password changed successfully!");
       } else {
-        message = "Error: ${response.statusCode}";
-        passwordBorderColor = Colors.red;
-        notifyListeners();
+        setMessage("Error: ${response.statusCode}", isError: true);
       }
     } catch (e) {
       debugPrint("ChangePassword Exception: $e");
-      message = "Connection error. Please try again.";
-      passwordBorderColor = Colors.red;
-      notifyListeners();
+      setMessage("Connection error. Please try again.", isError: true);
     }
   }
-
-
-  }
-
+}

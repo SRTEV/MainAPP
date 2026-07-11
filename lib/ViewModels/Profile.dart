@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../Controllers/UserController.dart';
 import 'Login.dart';
 import '../Controllers/AuthController.dart';
+import 'DeleteAccount.dart';
 class Profile extends StatefulWidget {
   const Profile({super.key});
 
@@ -25,7 +26,11 @@ class _ProfileState extends State<Profile> {
   @override
   Widget build(BuildContext context) {
     final viewModel = context.watch<UserController>();
-
+    final texts = GoogleFonts.inter(
+      color: Colors.black,
+      fontSize: 14,
+      fontWeight: FontWeight.w700,
+    );
     return Scaffold(
       body: SafeArea(
         child: Column(
@@ -197,7 +202,11 @@ class _ProfileState extends State<Profile> {
                 const SizedBox(height: 20),
 
                 ElevatedButton(
-                  onPressed: () => debugPrint("Delete account"),
+                  onPressed: () {
+                    Provider.of<AuthController>(context, listen: false).clearMessage();
+                    Provider.of<AuthController>(context, listen: false).clearSomeData();
+                    Navigator.push(context, MaterialPageRoute(builder: (context) => const DeleteAccount()));
+                  },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.black,
                     foregroundColor: Colors.white,
