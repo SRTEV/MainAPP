@@ -4,7 +4,6 @@ import 'package:mainapp/Controllers/UserController.dart';
 import 'package:mainapp/ViewModels/Login.dart';
 import 'package:provider/provider.dart';
 import '../Controllers/AuthController.dart';
-import 'package:bcrypt/bcrypt.dart';
 
 class DeleteAccount extends StatefulWidget {
   const DeleteAccount({super.key});
@@ -16,14 +15,17 @@ class DeleteAccount extends StatefulWidget {
 class _DeleteAccountState extends State<DeleteAccount> {
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmController = TextEditingController();
+
   void _hideKeyboard() {
     FocusScope.of(context).requestFocus(FocusNode());
   }
 
   @override
   Widget build(BuildContext context) {
-    final viewModel = context.watch<AuthController>();
-    final userModel = context.watch<UserController>();
+    // Використовуємо listen: true, щоб UI оновлювався при зміні кольорів/повідомлень
+    final authController = context.watch<AuthController>();
+    final userController = context.read<UserController>();
+
     return GestureDetector(
       onTap: _hideKeyboard,
       child: Scaffold(
@@ -56,8 +58,7 @@ class _DeleteAccountState extends State<DeleteAccount> {
                     obscureText: true,
                     decoration: _inputDecoration(
                       hint: "**********",
-                      borderColor: viewModel.passwordBorderColor
-
+                      borderColor: authController.passwordBorderColor,
                     ),
                   ),
                   const SizedBox(height: 30),
@@ -65,64 +66,60 @@ class _DeleteAccountState extends State<DeleteAccount> {
                   const SizedBox(height: 8),
                   TextField(
                     controller: _confirmController,
-                    decoration: _inputDecoration(hint: "DELETE",  borderColor: viewModel.passwordBorderColor),
+                    decoration: _inputDecoration(hint: "DELETE", borderColor: authController.confirmBorderColor),
                   ),
 
                   const SizedBox(height: 10),
                   Text(
-                      viewModel.message,
+                      authController.message,
                       style: const TextStyle(color: Colors.red, fontSize: 15, fontWeight: FontWeight.w500)
                   ),
+
                   const SizedBox(height: 60),
                   SizedBox(
                     width: double.infinity,
                     height: 60,
                     child: ElevatedButton(
                       onPressed: () async {
-                        viewModel.clearMessage();
                         _hideKeyboard();
 
-                        if (_passwordController.text.isEmpty || _confirmController.text.isEmpty) {
-                          viewModel.setMessage("Please fill in all fields", isError: true);
-                          viewModel.passwordBorderColor = Colors.red;
-                          viewModel.confirmBorderColor = Colors.red;
-                          return;
-                        }
-                        if (_confirmController.text != "DELETE") {
-                          viewModel.setMessage("Please write \"DELETE\"", isError: true);
-                          viewModel.confirmBorderColor = Colors.red;
-                          return;
-                        }
-
-                        // 4. Перевірка пароля
-                        if (viewModel.hash_pass(_passwordController.text) != userModel.hashedPassword) {
-                          viewModel.setMessage("Incorrect password", isError: true);
-                          viewModel.passwordBorderColor = Colors.red;
+                        // 1. Локальна валідація
+                        if (_passwordController.text.isEmpty || _confirmController.text != "DELETE") {
+                          authController.setMessage("Please check your input", isError: true);
+                          setState(() {
+                            authController.passwordBorderColor = Colors.red;
+                            authController.confirmBorderColor = Colors.red;
+                          });
                           return;
                         }
 
-                        // 5. БЕЗПЕЧНЕ ВИДАЛЕННЯ (додаємо перевірку на null)
-                        final currentId = userModel.tempId;
-                        if (currentId == null) {
-                          viewModel.setMessage("Session error, please login again", isError: true);
-                          return;
-                        }
+                        // 2. Виклик методу видалення через UserController
+                        // Примітка: переконайтеся, що в UserController метод deleteAccount
+                        // приймає (userId, password) і відправляє їх на сервер
+                        // 2. Виклик методу видалення через UserController
+                        try {
+                          // Використовуємо authController для отримання токена та ID
+                          final auth = context.read<AuthController>();
 
-                        // Виконуємо видалення
-                        await Provider.of<UserController>(context, listen: false).deleteAccount(currentId);
-
-                        viewModel.clearMessage();
-                        viewModel.clearSomeData();
-
-                        // Перехід на Login
-                        if (context.mounted) { // Перевірка, чи контекст ще "живий"
-                          Navigator.pushAndRemoveUntil(
-                            context,
-                            MaterialPageRoute(builder: (context) => const Login()),
-                                (route) => false,
+                          await userController.deleteAccount(
+                              auth.userId!,
+                              _passwordController.text,
+                              auth.token! // <--- Додайте третій аргумент: токен
                           );
+
+                          // 3. Успіх: очищаємо дані та перенаправляємо
+                          auth.clearSomeData();
+
+                          if (context.mounted) {
+                            Navigator.pushAndRemoveUntil(
+                              context,
+                              MaterialPageRoute(builder: (context) => const Login()),
+                                  (route) => false,
+                            );
+                          }
+                        } catch (e) {
+                          authController.setMessage("Failed to delete. Check your password.", isError: true);
                         }
-                        debugPrint("Account successfully deleted");
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.black,
@@ -132,7 +129,6 @@ class _DeleteAccountState extends State<DeleteAccount> {
                           style: TextStyle(color: Colors.red, fontSize: 18, fontWeight: FontWeight.bold)),
                     ),
                   ),
-
                 ],
               ),
             ),
@@ -142,21 +138,14 @@ class _DeleteAccountState extends State<DeleteAccount> {
     );
   }
 
-  InputDecoration _inputDecoration({String? hint, Color? borderColor}) {
+  InputDecoration _inputDecoration({String? hint, required Color borderColor}) {
     return InputDecoration(
       hintText: hint,
       filled: true,
       fillColor: Colors.grey[100],
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(20),
-        borderSide: BorderSide.none,
-      ),
-      enabledBorder: borderColor != null
-          ? OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide(color: borderColor, width: 1.5))
-          : null,
-      focusedBorder: borderColor != null
-          ? OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide(color: borderColor, width: 2.0))
-          : null,
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide.none),
+      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide(color: borderColor, width: 1.5)),
+      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide(color: borderColor, width: 2.0)),
     );
   }
 }

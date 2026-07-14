@@ -7,8 +7,11 @@ import 'Login.dart';
 class ChangePasswordReset extends StatefulWidget {
   final String token;
 
-  const ChangePasswordReset({super.key, required this.token});
+  const ChangePasswordReset({
+    super.key,
+    required this.token,
 
+  });
 
   @override
   State<ChangePasswordReset> createState() => _ChangePasswordResetState();
@@ -18,16 +21,13 @@ class _ChangePasswordResetState extends State<ChangePasswordReset> {
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController = TextEditingController();
 
-
-
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<AuthController>(context, listen: false).clearMessage();
+      context.read<AuthController>().clearMessage();
     });
   }
-
 
   void _hideKeyboard() {
     FocusScope.of(context).requestFocus(FocusNode());
@@ -50,14 +50,13 @@ class _ChangePasswordResetState extends State<ChangePasswordReset> {
                 Row(
                   children: [
                     IconButton(
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                      icon: const Icon(Icons.arrow_circle_left_outlined, size: 36),
-                      onPressed: () {
-                        Navigator.pop(context);
-                        viewModel.clearMessage();
-                      }
-                    ),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        icon: const Icon(Icons.arrow_circle_left_outlined, size: 36),
+                        onPressed: () {
+                          Navigator.pop(context);
+                          viewModel.clearMessage();
+                        }),
                     const SizedBox(width: 10),
                     Text(
                       "Reset password",
@@ -71,18 +70,25 @@ class _ChangePasswordResetState extends State<ChangePasswordReset> {
                 ),
 
                 const SizedBox(height: 80),
-                const Align(alignment: Alignment.centerLeft, child: Text("Write new password:", style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600))),
+                const Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text("Write new password:",
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600))),
                 const SizedBox(height: 8),
                 _buildTextField(_passwordController),
 
                 const SizedBox(height: 25),
-                const Align(alignment: Alignment.centerLeft, child: Text("Retype new password:", style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600))),
+                const Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text("Retype new password:",
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600))),
                 const SizedBox(height: 8),
                 _buildTextField(_confirmPasswordController),
 
                 const SizedBox(height: 10),
                 if (viewModel.message.isNotEmpty)
-                  Text(viewModel.message, style: const TextStyle(color: Colors.red, fontSize: 15, fontWeight: FontWeight.w500)),
+                  Text(viewModel.message,
+                      style: const TextStyle(color: Colors.red, fontSize: 15, fontWeight: FontWeight.w500)),
 
                 const SizedBox(height: 60),
 
@@ -96,26 +102,26 @@ class _ChangePasswordResetState extends State<ChangePasswordReset> {
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
-                      onPressed: ()  async {
+                      onPressed: () async {
                         final authProvider = Provider.of<AuthController>(context, listen: false);
-                        viewModel.clearMessage();
                         _hideKeyboard();
 
-                        final email = authProvider.tempEmail;
-                        if (email != null) {
-                          Provider.of<AuthController>(context, listen: false).ChangePassword(
-                            context,
-                            _passwordController.text,
-                            _confirmPasswordController.text,
-                            email,
-                          );
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (context) => const Login()),
-                          );
-                        } else {
-                          setState(() {
-                          });
+
+                        await authProvider.changePassword(
+                          context,
+                          widget.token,
+                          _passwordController.text,
+                          _confirmPasswordController.text,
+                        );
+
+                        if (!authProvider.message.contains("Error") && authProvider.message.contains("success")) {
+                          if (context.mounted) {
+                            Navigator.pushAndRemoveUntil(
+                              context,
+                              MaterialPageRoute(builder: (context) => const Login()),
+                                  (route) => false,
+                            );
+                          }
                         }
                       },
                       child: const Text("Reset password", style: TextStyle(fontSize: 16)),
@@ -130,6 +136,7 @@ class _ChangePasswordResetState extends State<ChangePasswordReset> {
       ),
     );
   }
+
   Widget _buildTextField(TextEditingController controller) {
     final viewModel = context.watch<AuthController>();
     return TextField(
@@ -149,7 +156,7 @@ class _ChangePasswordResetState extends State<ChangePasswordReset> {
           borderRadius: BorderRadius.circular(20),
           borderSide: BorderSide(color: viewModel.passwordBorderColor, width: 3),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 7, vertical: 7),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
       ),
     );
   }

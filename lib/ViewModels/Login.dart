@@ -113,7 +113,7 @@ class _LoginState extends State<Login> {
                     child: ElevatedButton(
                       onPressed: () {
                         _hideKeyboard();
-                        viewModel.Login(context, email, password);
+                        viewModel.login(context, email, password);
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.black,

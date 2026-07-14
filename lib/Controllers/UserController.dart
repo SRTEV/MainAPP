@@ -14,13 +14,16 @@ class UserController extends ChangeNotifier {
   int? Role;
 
 
-  Future<void> fetchUserName(int id) async {
+  Future<void> fetchUserName(int id, String token) async {
     isLoading = true;
     notifyListeners();
 
     final url = Uri.parse('http://$serverApi:5194/api/User/$id');
     try {
-      final response = await http.get(url);
+      final response = await http.get(Uri.parse(url.toString()),
+        headers: {
+          'Authorization': 'Bearer $token',
+      });
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -44,7 +47,7 @@ class UserController extends ChangeNotifier {
     }
   }
 
-  Future<void> deleteAccount(int id) async {
+  Future<void> deleteAccount(int id, String text, String token ) async {
     final url = Uri.parse('http://$serverApi:5194/api/User/Delete/$id');
 
     try {
@@ -52,7 +55,10 @@ class UserController extends ChangeNotifier {
         url,
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
         },
+        body: json.encode({'Password': text}),
+
       );
 
       if (response.statusCode == 200) {

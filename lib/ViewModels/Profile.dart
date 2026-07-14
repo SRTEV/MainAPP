@@ -2,228 +2,140 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../Controllers/UserController.dart';
-import 'Login.dart';
 import '../Controllers/AuthController.dart';
+import 'Login.dart';
 import 'DeleteAccount.dart';
+
 class Profile extends StatefulWidget {
   const Profile({super.key});
 
   @override
   _ProfileState createState() => _ProfileState();
 }
+
 class _ProfileState extends State<Profile> {
+  @override
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final userId = Provider.of<AuthController>(context, listen: false).tempId;
-      if (userId != null) {
-        Provider.of<UserController>(context, listen: false).fetchUserName(userId);
+      final auth = context.read<AuthController>();
+      final user = context.read<UserController>();
+
+      if (auth.userId != null && auth.token != null) {
+        user.fetchUserName(auth.userId!, auth.token!);
       }
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final viewModel = context.watch<UserController>();
-    final texts = GoogleFonts.inter(
-      color: Colors.black,
-      fontSize: 14,
-      fontWeight: FontWeight.w700,
-    );
+    final userModel = context.watch<UserController>();
     return Scaffold(
+      backgroundColor: Colors.white,
       body: SafeArea(
-        child: Column(
-          children: [
-            Row(
-              children: [
-                IconButton(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  IconButton(
                     icon: const Icon(Icons.arrow_circle_left_outlined, size: 36),
-                    onPressed: () => Navigator.pop(context)
-                ),
-                const SizedBox(width: 5),
-                Text(
-                  viewModel.userName != null
-                      ? "Hi, ${viewModel.userName}!"
-                      : "Loading...",
-                  style: GoogleFonts.inter(fontSize: 30, fontWeight: FontWeight.w700),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 40),
-
-            Column(
-              children: [
-                Text(
-                  viewModel.balance != null
-                      ? "Outstanding balance: ${viewModel.balance} Zł"
-                      : "Loading...",
-                  style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 10),
-                if (viewModel.balance != null && viewModel.balance! > 0.0)
-                  ElevatedButton(
-                    onPressed: () {
-                      debugPrint("Pay button pressed");
-                      //Pay logic
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.black,
-                      foregroundColor: Colors.white,
-                      side: const BorderSide(
-                        color: Colors.red,
-                        width: 2.0,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 5),
-                    ),
-                    child: const Text(
-                      "Pay outstanding balance",
-                      style: TextStyle(
-                        fontSize: 18
-                      ),
-                    ),
-                  )
-              ],
-            ),
-
-            const SizedBox(height: 40),
-
-
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "Payment card: ",
-                  style: GoogleFonts.inter(fontSize: 17, fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 10),
-
-                    ElevatedButton(
-                      onPressed: () {
-                        debugPrint("add card button pressed");
-
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.black,
-                        foregroundColor: Colors.white,
-                        side: const BorderSide(
-                          color: Colors.black,
-                          width: 2.0,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        padding: const EdgeInsets.symmetric(horizontal: 75, vertical: 15),
-                      ),
-                      child: const Text(
-                        "Add payment card",
-                        style: TextStyle(
-                            fontSize: 18
-                        ),
-                      ),
-                    )
-              ],
-            ),
-
-            const SizedBox(height: 120),
-
-            ElevatedButton(
-              onPressed: () {
-                debugPrint("Contact to support");
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.black,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                padding: const EdgeInsets.symmetric(horizontal: 75, vertical: 15),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                  const SizedBox(width: 5),
+                  Text(
+                    userModel.userName != null ? "Hi, ${userModel.userName}!" : "Loading...",
+                    style: GoogleFonts.inter(fontSize: 30, fontWeight: FontWeight.w700),
+                  ),
+                ],
               ),
-              child: const Text("Contact to support", style: TextStyle(fontSize: 18)),
-            ),
 
-            const SizedBox(height: 20),
+              const SizedBox(height: 40),
 
-
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                ElevatedButton(
-                  onPressed: () => debugPrint("Edit profile"),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.black,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                    padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 10),
-                  ),
-                  child: const Text("Edit profile"),
-                ),
-                const SizedBox(width: 15),
-                ElevatedButton(
-                  onPressed: () => debugPrint("Edit password"),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.black,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                  ),
-                  child: const Text("Edit password"),
-                ),
+              Text(
+                userModel.balance != null
+                    ? "Outstanding balance: ${userModel.balance} Zł"
+                    : "Loading...",
+                style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.w700),
+              ),
+              if (userModel.balance != null && userModel.balance! > 0.0) ...[
+                const SizedBox(height: 10),
+                _buildActionButton("Pay outstanding balance", Colors.red, () {
+                  debugPrint("Pay button pressed");
+                }),
               ],
-            ),
 
-            const SizedBox(height: 90),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                ElevatedButton(
-                  onPressed: () {
+              const SizedBox(height: 40),
 
-                    Provider.of<AuthController>(context, listen: false).clearMessage();
-                    Provider.of<AuthController>(context, listen: false).clearSomeData();
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text("Payment card:", style: GoogleFonts.inter(fontSize: 17, fontWeight: FontWeight.w700)),
+              ),
+              const SizedBox(height: 10),
+              _buildActionButton("Add payment card", Colors.black, () {
+                debugPrint("Add card pressed");
+              }, horizontalPadding: 75),
 
-                    Navigator.pushAndRemoveUntil(
-                      context,
-                      MaterialPageRoute(builder: (context) => const Login()),
-                          (route) => false,
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.black,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                    padding: const EdgeInsets.symmetric(horizontal: 90, vertical: 5),
-                  ),
-                  child: const Text("Log out", style: TextStyle(fontSize: 15, color: Colors.grey)),
-                ),
+              const SizedBox(height: 120),
 
-                const SizedBox(height: 20),
+              _buildActionButton("Contact to support", Colors.black, () {
+                debugPrint("Support pressed");
+              }, horizontalPadding: 75),
 
-                ElevatedButton(
-                  onPressed: () {
-                    Provider.of<AuthController>(context, listen: false).clearMessage();
-                    Provider.of<AuthController>(context, listen: false).clearSomeData();
-                    Navigator.push(context, MaterialPageRoute(builder: (context) => const DeleteAccount()));
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.black,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _buildActionButton("Edit profile", Colors.black, () {}, horizontalPadding: 30),
+                  const SizedBox(width: 15),
+                  _buildActionButton("Edit password", Colors.black, () {}, horizontalPadding: 20),
+                ],
+              ),
 
-                    padding: const EdgeInsets.symmetric(horizontal: 90, vertical: 10),
-                  ),
-                  child: const Text("Delete account", style: TextStyle(color: Colors.red, fontSize: 18)),
-                ),
-              ],
-            )
-          ],
+              const SizedBox(height: 90),
 
+              // --- Logout & Delete ---
+              _buildActionButton("Log out", Colors.grey, () {
+                final auth = context.read<AuthController>();
+                auth.clearMessage();
+                auth.clearSomeData();
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (context) => const Login()),
+                      (route) => false,
+                );
+              }, horizontalPadding: 90),
+
+              const SizedBox(height: 20),
+
+              _buildActionButton("Delete account", Colors.red, () {
+                context.read<AuthController>().clearMessage();
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const DeleteAccount()),
+                );
+              }, horizontalPadding: 90),
+              const SizedBox(height: 40),
+            ],
+          ),
         ),
-
-
       ),
+    );
+  }
+
+  Widget _buildActionButton(String text, Color borderColor, VoidCallback onPressed, {double horizontalPadding = 20}) {
+    return ElevatedButton(
+      onPressed: onPressed,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
+        side: BorderSide(color: borderColor, width: 2.0),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 12),
+      ),
+      child: Text(text, style: TextStyle(fontSize: 16, color: borderColor == Colors.grey ? Colors.grey : null)),
     );
   }
 }

@@ -114,7 +114,7 @@ class _RegisterState extends State<Register> {
                     child: ElevatedButton(
                       onPressed: () {
                         _hideKeyboard();
-                        context.read<AuthController>().Register(
+                        context.read<AuthController>().register(
                               context,
                               name,
                               email,

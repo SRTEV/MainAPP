@@ -50,10 +50,6 @@ class Controller extends ChangeNotifier {
       if (response.statusCode == 200) {
         List<dynamic> data = json.decode(response.body);
         vehicles = data.map((item) => VehicleModel.fromJson(item)).toList();
-        debugPrint("API Status: ${response.statusCode}");
-        for (var v in vehicles) {
-          debugPrint("Vehicle ID: ${v.id}, Position: ${v.position}");
-        }
         notifyListeners();
       }
     } catch (e) {
