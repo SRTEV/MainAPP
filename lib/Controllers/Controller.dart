@@ -31,8 +31,8 @@ class VehicleModel {
         parseDouble(json['positionX']),
         parseDouble(json['positionY']),
       ),
-      status: json['vechicleStatus']?['name'] ?? 'Unknown',
-      type: json['vehicleType']?['name'] ?? 'Unknown',
+      status: json['vehicleStatus']?['name'] ,
+      type: json['vehicleType']?['name'] ,
     );
   }
 }
@@ -49,6 +49,8 @@ class Controller extends ChangeNotifier {
 
       if (response.statusCode == 200) {
         List<dynamic> data = json.decode(response.body);
+
+
         vehicles = data.map((item) => VehicleModel.fromJson(item)).toList();
         notifyListeners();
       }

@@ -24,7 +24,6 @@ void main() async {
         onGenerateRoute: (settings) {
           final name = settings.name;
           if (name != null && name.contains('token=')) {
-            // Парсимо URL, щоб дістати лише токен
             final uri = Uri.parse(name.startsWith('/') ? 'https://app.local$name' : name);
             final token = uri.queryParameters['token'];
 

@@ -97,16 +97,16 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   void _onItemTapped(int index, BuildContext context) {
     switch (index) {
       case 0:
-       debugPrint("0");
+        debugPrint("0");
         break;
       case 1:
-       debugPrint("1");
+        debugPrint("1");
         break;
       case 2:
-       debugPrint("2");
+        debugPrint("2");
         break;
       case 3:
-       Navigator.push(context, MaterialPageRoute(builder: (context) => const Profile()));
+        Navigator.push(context, MaterialPageRoute(builder: (context) => const Profile()));
         break;
     }
   }
@@ -145,11 +145,16 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                   additionalOptions: {'accessToken': mapboxToken}
               ),
               MarkerLayer(
-                markers: vehicles.map((v) => Marker(
+                markers: vehicles
+                    .where((v) =>  v.status == 'Available')
+                    .map((v) => Marker(
+                  key: Key(v.id.toString()),
                   point: v.position,
-                  width: 40, height: 40,
+                  width: 40,
+                  height: 40,
                   child: Image.asset(getIconForVehicleType(v.type)),
-                )).toList(),
+                ))
+                    .toList(),
               ),
               MarkerLayer(markers: [
                 Marker(point: userLocation, width: 120, height: 120, child: _buildUserPointer())
@@ -199,7 +204,18 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     ]);
   }
 
-  String getIconForVehicleType(String type) => 'lib/assets/imgs/${type.toLowerCase().contains("bike") ? "bike" : "scooter"}.png';
+  String getIconForVehicleType(String type) {
+    switch (type.toLowerCase().trim()) {
+      case 'electric scooter':
+        return 'lib/assets/imgs/scooter.png';
+      case 'monowheel':
+        return 'lib/assets/imgs/monowheel.png';
+      case 'bike':
+        return 'lib/assets/imgs/bike.png';
+      default:
+        return 'lib/assets/imgs/scooter.png';
+    }
+  }
 }
 
 class Pointer extends CustomPainter {

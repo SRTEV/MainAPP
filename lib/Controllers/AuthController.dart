@@ -17,7 +17,6 @@ class AuthController extends ChangeNotifier {
 
   final String emailRegex = r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$';
   String get serverApi => dotenv.env['SERVER'] ?? 'localhost';
-  String get baseUrl => 'http://$serverApi:5194/api/User';
 
   void setMessage(String msg, {bool isError = false}) {
     message = msg;
@@ -85,7 +84,7 @@ class AuthController extends ChangeNotifier {
 
     try {
       final response = await http.post(
-        Uri.parse('$baseUrl/register/app'),
+        Uri.parse('http://$serverApi:5194/api/User/register/app'),
         headers: {"Content-Type": "application/json"},
         body: json.encode({'Name': name, 'Email': email, 'Password': password}),
       );
@@ -129,7 +128,7 @@ class AuthController extends ChangeNotifier {
 
     try {
       final response = await http.post(
-        Uri.parse('$baseUrl/login/app'),
+        Uri.parse('http://$serverApi:5194/api/User/login/app'),
         headers: {"Content-Type": "application/json"},
         body: json.encode({'Email': email, 'Password': password}),
       );
@@ -209,7 +208,7 @@ class AuthController extends ChangeNotifier {
 
     try {
       final response = await http.post(
-        Uri.parse('$baseUrl/ChangePassword'),
+        Uri.parse('http://$serverApi:5194/api/User/ChangePassword'),
         headers: {"Content-Type": "application/json"},
         body: json.encode({
           'Token': token,
