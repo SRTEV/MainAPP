@@ -6,6 +6,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart' hide Path;
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter_compass/flutter_compass.dart';
+import 'package:mainapp/Controllers/RentalController.dart';
 import 'package:provider/provider.dart';
 import 'dart:math' as math;
 import '../Controllers/Controller.dart';
@@ -144,15 +145,29 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                   urlTemplate: 'https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/{z}/{x}/{y}?access_token={accessToken}',
                   additionalOptions: {'accessToken': mapboxToken}
               ),
+              // У методі build всередині MarkerLayer
               MarkerLayer(
                 markers: vehicles
-                    .where((v) =>  v.status == 'Available')
+                    .where((v) => v.status == 'Available')
                     .map((v) => Marker(
                   key: Key(v.id.toString()),
                   point: v.position,
-                  width: 40,
-                  height: 40,
-                  child: Image.asset(getIconForVehicleType(v.type)),
+                  width: 80,
+                  height: 80,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () async {
+                      await context.read<RentalController>().fetchRentalPlans(v.vehicleTypeId);
+                      _showVehicleDetails(context, v);
+
+                      debugPrint(v.type);
+                      debugPrint(v.status);
+                      debugPrint(v.id.toString());
+                    },
+                    child: Center(
+                      child: Image.asset(getIconForVehicleType(v.type), width: 40, height: 40),
+                    ),
+                  ),
                 ))
                     .toList(),
               ),
@@ -215,6 +230,51 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       default:
         return 'lib/assets/imgs/scooter.png';
     }
+  }
+
+  void _showVehicleDetails(BuildContext context, dynamic vehicle) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (context) => Consumer<RentalController>(
+        builder: (context, controller, child) {
+          if (controller.isLoading) return const SizedBox(height: 150, child: Center(child: CircularProgressIndicator()));
+
+          return Container(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text("${vehicle.type} ${vehicle.model} ${vehicle.batteryLevel}%", style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 15),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: controller.plans.map((plan) => _buildPlanBox(plan)).toList(),
+                ),
+                const SizedBox(height: 20),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.black, minimumSize: const Size(double.infinity, 50)),
+                  onPressed: () {
+                  },
+                  child: const Text("Start", style: TextStyle(color: Colors.white)),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildPlanBox(RentalPlan plan) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(border: Border.all(color: Colors.black), borderRadius: BorderRadius.circular(8)),
+      child: Column(children: [
+        Text(plan.planName, style: const TextStyle(fontWeight: FontWeight.bold)),
+        Text("${plan.price} Zł/${plan.time > 60 ? 'hour' : 'min'}"),
+      ]),
+    );
   }
 }
 

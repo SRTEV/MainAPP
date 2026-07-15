@@ -1,3 +1,4 @@
+import 'package:mainapp/Controllers/RentalController.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter/material.dart';
 import 'ViewModels/Login.dart';
@@ -16,6 +17,7 @@ void main() async {
       providers: [
         ChangeNotifierProvider(create: (_) => Controller()),
         ChangeNotifierProvider(create: (_) => UserController()),
+        ChangeNotifierProvider(create: (_) => RentalController()),
         ChangeNotifierProvider(create: (_) => AuthController()),
       ],
       child: MaterialApp(

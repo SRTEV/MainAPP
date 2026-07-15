@@ -10,12 +10,19 @@ class VehicleModel {
   final LatLng position;
   final String status;
   final String type;
+  final int vehicleTypeId;
+  final String model;
+  final int batteryLevel;
+
 
   VehicleModel({
     required this.id,
     required this.position,
     required this.status,
     required this.type,
+    required this.vehicleTypeId,
+    required this.model,
+    required this.batteryLevel,
   });
 
   factory VehicleModel.fromJson(Map<String, dynamic> json) {
@@ -33,6 +40,9 @@ class VehicleModel {
       ),
       status: json['vehicleStatus']?['name'] ,
       type: json['vehicleType']?['name'] ,
+      vehicleTypeId: json['vehicleType']?['id'] ,
+      model: json['model'],
+      batteryLevel: json['batteryLevel'] ?? 0,
     );
   }
 }
