@@ -32,6 +32,7 @@ class VehicleModel {
       return double.tryParse(strValue) ?? 0.0;
     }
 
+
     return VehicleModel(
       id: json['id'] ?? 0,
       position: LatLng(
@@ -51,6 +52,9 @@ class Controller extends ChangeNotifier {
   List<VehicleModel> vehicles = [];
   Timer? _vehicleTimer;
   String get serverApi => dotenv.env['SERVER']!;
+  List<String> get vehicleTypes {
+    return vehicles.map((v) => v.type).toSet().toList();
+  }
 
   Future<void> fetchVehicles() async {
     final url = Uri.parse('http://$serverApi:5194/api/Vehicle');
