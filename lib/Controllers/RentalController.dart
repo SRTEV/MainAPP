@@ -10,6 +10,7 @@ class RentalPlan {
   final int time;
   final int vehicleTypeId;
 
+
   RentalPlan({
     required this.id,
     required this.planName,
@@ -29,31 +30,30 @@ class RentalPlan {
   }
 }
 
+
 class RentalController extends ChangeNotifier {
-  final String _serverApi = dotenv.env['SERVER'] ?? '10.0.2.2';
+  final String _serverApi = dotenv.env['SERVER']!;
 
   List<RentalPlan> _plans = [];
   List<RentalPlan> get plans => _plans;
-
+  RentalPlan? _selectedPlan;
+  RentalPlan? get selectedPlan => _selectedPlan;
   bool _isLoading = false;
   bool get isLoading => _isLoading;
 
-  Future<void> fetchRentalPlans(int id) async {
+  Future<void> fetchRentalPlans(int vehicleTypeId) async {
     _isLoading = true;
     notifyListeners();
 
     try {
-      final url = Uri.parse('http://$_serverApi:5194/api/VehicleType/$id');
+      final url = Uri.parse('http://$_serverApi:5194/api/RentalPlan/VehicleType/$vehicleTypeId');
       final response = await http.get(url);
 
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
-
-        // Безпечна обробка: API може повернути як List, так і Map
         if (decoded is List) {
           _plans = decoded.map((item) => RentalPlan.fromJson(item)).toList();
         } else if (decoded is Map<String, dynamic>) {
-          // Якщо сервер повертає об'єкт, шукаємо в ньому список або перетворюємо його
           if (decoded.containsKey('rentalPlans')) {
             _plans = (decoded['rentalPlans'] as List).map((i) => RentalPlan.fromJson(i)).toList();
           } else {
@@ -71,6 +71,11 @@ class RentalController extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
+
+  }
+  void selectPlan(RentalPlan plan) {
+    _selectedPlan = plan;
+    notifyListeners();
   }
 
 

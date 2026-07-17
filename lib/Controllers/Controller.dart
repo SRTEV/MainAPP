@@ -13,6 +13,8 @@ class VehicleModel {
   final int vehicleTypeId;
   final String model;
   final int batteryLevel;
+  final double batteryCapacity;
+  final double electricityConsumption;
 
 
   VehicleModel({
@@ -23,6 +25,8 @@ class VehicleModel {
     required this.vehicleTypeId,
     required this.model,
     required this.batteryLevel,
+    required this.batteryCapacity,
+    required this.electricityConsumption,
   });
 
   factory VehicleModel.fromJson(Map<String, dynamic> json) {
@@ -44,6 +48,8 @@ class VehicleModel {
       vehicleTypeId: json['vehicleType']?['id'] ,
       model: json['model'],
       batteryLevel: json['batteryLevel'] ?? 0,
+      batteryCapacity: (json['batteryCapacity'] ?? 0).toDouble(),
+      electricityConsumption: (json['electricityConsumption'] ?? 0).toDouble(),
     );
   }
 }
@@ -76,5 +82,14 @@ class Controller extends ChangeNotifier {
   void startVehiclePolling() {
     _vehicleTimer?.cancel();
     _vehicleTimer = Timer.periodic(const Duration(seconds: 5), (_) => fetchVehicles());
+  }
+
+
+  double calculateRange(VehicleModel vehicle) {
+    if (vehicle.electricityConsumption <= 0) return 0.0;
+    double voltage = 36.0;
+    double capacityWh = (vehicle.batteryCapacity * voltage) / 1000;
+    double remainingWh = capacityWh * (vehicle.batteryLevel / 100);
+    return remainingWh / vehicle.electricityConsumption;
   }
 }

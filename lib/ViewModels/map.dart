@@ -20,7 +20,7 @@ class MapPage extends StatefulWidget {
 }
 
 class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
-  final String mapboxToken = dotenv.env['TOKEN_MAP'] ?? '';
+  final String mapboxToken = dotenv.env['TOKEN_MAP'] !;
   LatLng userLocation = const LatLng(51.23547305664311, 22.548898519702192);
   LatLng targetLocation = const LatLng(51.23547305664311, 22.548898519702192);
   double userHeading = 0.0;
@@ -43,8 +43,11 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
-    _pulseController = AnimationController(duration: const Duration(seconds: 2), vsync: this)..repeat(reverse: true);
-    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.3).animate(CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut));
+    _pulseController =
+    AnimationController(duration: const Duration(seconds: 2), vsync: this)
+      ..repeat(reverse: true);
+    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.3).animate(
+        CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut));
 
     _ticker = createTicker((elapsed) => _updateSmoothElements());
     _ticker.start();
@@ -69,8 +72,10 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   void _updateSmoothElements() {
     const double lerpFactor = 0.08;
     userLocation = LatLng(
-      userLocation.latitude + (targetLocation.latitude - userLocation.latitude) * lerpFactor,
-      userLocation.longitude + (targetLocation.longitude - userLocation.longitude) * lerpFactor,
+      userLocation.latitude +
+          (targetLocation.latitude - userLocation.latitude) * lerpFactor,
+      userLocation.longitude +
+          (targetLocation.longitude - userLocation.longitude) * lerpFactor,
     );
     if (Fallow) _mapController.move(userLocation, _mapController.camera.zoom);
 
@@ -90,22 +95,27 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   }
 
   Future<void> _initLocation() async {
-    Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.bestForNavigation);
+    Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.bestForNavigation);
     setState(() {
       userLocation = LatLng(position.latitude, position.longitude);
       targetLocation = userLocation;
     });
     _positionStream = Geolocator.getPositionStream(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.bestForNavigation, distanceFilter: 0)
-    ).listen((p) => setState(() => targetLocation = LatLng(p.latitude, p.longitude)));
+        locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.bestForNavigation, distanceFilter: 0)
+    ).listen((p) =>
+        setState(() => targetLocation = LatLng(p.latitude, p.longitude)));
   }
 
   void _initCompass() {
-    _compassStream = FlutterCompass.events?.listen((e) => targetHeading = e.heading ?? 0.0);
+    _compassStream =
+        FlutterCompass.events?.listen((e) => targetHeading = e.heading ?? 0.0);
   }
 
   void _onItemTapped(int index, BuildContext context) {
-    if (index == 3) Navigator.push(context, MaterialPageRoute(builder: (context) => const Profile()));
+    if (index == 3) Navigator.push(
+        context, MaterialPageRoute(builder: (context) => const Profile()));
   }
 
   @override
@@ -125,177 +135,350 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     _ensureFiltersInitialized(vehicles);
 
     return Scaffold(
-      body: Stack(
-        children: [
-          FlutterMap(
-            mapController: _mapController,
-            options: MapOptions(
-              initialCenter: userLocation,
-              initialZoom: 16.0,
-              onMapEvent: (event) {
-                if (event.source == MapEventSource.onDrag) {
-                  setState(() => Fallow = false);
-                  _startResumeTimer();
-                }
-              },
-            ),
-            children: [
-              TileLayer(
-                  urlTemplate: 'https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/{z}/{x}/{y}?access_token={accessToken}',
-                  additionalOptions: {'accessToken': mapboxToken}
+        body: Stack(
+          children: [
+            FlutterMap(
+              mapController: _mapController,
+              options: MapOptions(
+                initialCenter: userLocation,
+                initialZoom: 16.0,
+                onMapEvent: (event) {
+                  if (event.source == MapEventSource.onDrag) {
+                    setState(() => Fallow = false);
+                    _startResumeTimer();
+                  }
+                },
               ),
-              MarkerLayer(
-                markers: vehicles
-                    .where((v) => v.status == 'Available' && _visibleTypes.contains(v.type))
-                    .map((v) => Marker(
-                  point: v.position,
-                  width: 40, height: 40,
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: () async {
-                      await context.read<RentalController>().fetchRentalPlans(v.vehicleTypeId);
-                      _showVehicleDetails(context, v);
-                    },
-                    child: Center(child: Image.asset(getIconForVehicleType(v.type), width: 40, height: 40)),
-                  ),
-                )).toList(),
-              ),
-              MarkerLayer(markers: [Marker(point: userLocation, width: 120, height: 120, child: IgnorePointer( // <--- Це вимикає взаємодію з цим маркером
-                child: _buildUserPointer(),
-              ),)]),
-            ],
-          ),
-
-
-          Positioned(
-            top: 50,
-            left: 20,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Кнопка "Filter" - вужча і довша
-                SizedBox(
-                  width: 130, // Вужча
-                  height: 30, // Довша (висота)
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.black,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                    ),
-                    onPressed: () => setState(() => _isFilterOpen = !_isFilterOpen),
-                    child: const Text("Filter", style: TextStyle(fontSize: 14)),
-                  ),
+                TileLayer(
+                    urlTemplate: 'https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/{z}/{x}/{y}?access_token={accessToken}',
+                    additionalOptions: {'accessToken': mapboxToken}
                 ),
-                if (_isFilterOpen)
-                  Container(
-                    width: 180,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(15),
-                      border: Border.all(color: Colors.black),
-                      boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 5)],
-                    ),
-                    child: Column(
-                      children: controller.vehicleTypes.map((type) => Theme(
-                        data: Theme.of(context).copyWith(
-                          checkboxTheme: CheckboxThemeData(
-                            fillColor: WidgetStateProperty.resolveWith((states) =>
-                            states.contains(WidgetState.selected) ? Colors.black : Colors.grey[300]),
-                            checkColor: WidgetStateProperty.all(Colors.white),
-                          ),
-                        ),
-                        child: CheckboxListTile(
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 5),
-                          title: Text(type, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black)),
-                          value: _visibleTypes.contains(type),
-                          controlAffinity: ListTileControlAffinity.leading,
-                          onChanged: (val) => setState(() => val! ? _visibleTypes.add(type) : _visibleTypes.remove(type)),
+                MarkerLayer(
+                  markers: vehicles
+                      .where((v) =>
+                  v.status == 'Available' && _visibleTypes.contains(v.type))
+                      .map((v) =>
+                      Marker(
+                        point: v.position,
+                        width: 40, height: 40,
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () async {
+                            await context
+                                .read<RentalController>()
+                                .fetchRentalPlans(v.vehicleTypeId);
+                            _showVehicleDetails(context, v);
+                          },
+                          child: Center(
+                              child: Image.asset(getIconForVehicleType(v.type),
+                                  width: 40, height: 40)),
                         ),
                       )).toList(),
-                    ),
-                  ),
+                ),
+                MarkerLayer(markers: [
+                  Marker(point: userLocation,
+                    width: 120,
+                    height: 120,
+                    child: IgnorePointer(
+                      child: _buildUserPointer(),
+                    ),)
+                ]),
               ],
             ),
-          ),
 
 
-        ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: Colors.black,
-        onPressed: () => setState(() => Fallow = true),
-        child: const Icon(Icons.my_location, color: Colors.white),
-      ),
-        bottomNavigationBar: SizedBox(
-            height: 90,
-            child: Theme(
-              data: Theme.of(context).copyWith(
-                canvasColor: Colors.black,
-              ),
-              child: BottomNavigationBar(
-                type: BottomNavigationBarType.fixed,
-                selectedItemColor: Colors.white,
-                unselectedItemColor: Colors.white,
-                iconSize: 32,
-                selectedFontSize: 14,
-                unselectedFontSize: 14,
-                onTap: (index) => _onItemTapped(index, context),
-                items: const [
-                  BottomNavigationBarItem(icon: Padding(padding: EdgeInsets.only(bottom: 4), child: Icon(Icons.emoji_events)), label: 'Challenges'),
-                  BottomNavigationBarItem(icon: Padding(padding: EdgeInsets.only(bottom: 4), child: Icon(Icons.history)), label: 'History'),
-                  BottomNavigationBarItem(icon: Padding(padding: EdgeInsets.only(bottom: 4), child: Icon(Icons.camera_alt)), label: 'Scan'),
-                  BottomNavigationBarItem(icon: Padding(padding: EdgeInsets.only(bottom: 4), child: Icon(Icons.person)), label: 'Account'),
+            Positioned(
+              top: 50,
+              left: 20,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    width: 130,
+                    height: 30,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.black,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20)),
+                      ),
+                      onPressed: () =>
+                          setState(() => _isFilterOpen = !_isFilterOpen),
+                      child: const Text(
+                          "Filter", style: TextStyle(fontSize: 14)),
+                    ),
+                  ),
+                  if (_isFilterOpen)
+                    Container(
+                      width: 200,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+
+                        border: Border.all(
+                            color: Colors.black, width: 2),
+                      ),
+                      child: Column(
+                        children: [
+
+                          ...controller.vehicleTypes.map((type) =>
+                              Theme(
+                                data: Theme.of(context).copyWith(
+                                  checkboxTheme: CheckboxThemeData(
+                                    fillColor: WidgetStateProperty.resolveWith((
+                                        states) =>
+                                    states.contains(WidgetState.selected)
+                                        ? Colors.black
+                                        : Colors.grey[300]),
+                                    checkColor: WidgetStateProperty.all(
+                                        Colors.white),
+                                  ),
+                                ),
+                                child: Material(
+                                  color: Colors.transparent,
+                                  child: CheckboxListTile(
+                                    dense: true,
+                                    visualDensity: const VisualDensity(
+                                        horizontal: -4, vertical: -4),
+                                    contentPadding: const EdgeInsets.symmetric(
+                                        horizontal: 5, vertical: 0),
+
+                                    title: Text(type, style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.black)),
+                                    value: _visibleTypes.contains(type),
+                                    controlAffinity: ListTileControlAffinity
+                                        .leading,
+                                    onChanged: (val) =>
+                                        setState(() =>
+                                        val!
+                                            ? _visibleTypes.add(type)
+                                            : _visibleTypes.remove(type)),
+                                  ),
+                                ),
+                              )).toList(),
+                        ],
+                      ),
+                    ),
                 ],
               ),
             ),
+
+
+          ],
+        ),
+        floatingActionButton: FloatingActionButton(
+          backgroundColor: Colors.black,
+          onPressed: () => setState(() => Fallow = true),
+          child: const Icon(Icons.my_location, color: Colors.white),
+        ),
+        bottomNavigationBar: SizedBox(
+          height: 80,
+          child: Theme(
+            data: Theme.of(context).copyWith(
+              canvasColor: Colors.black,
+            ),
+            child: BottomNavigationBar(
+              type: BottomNavigationBarType.fixed,
+              selectedItemColor: Colors.white,
+              unselectedItemColor: Colors.white,
+              iconSize: 32,
+              selectedFontSize: 14,
+              unselectedFontSize: 14,
+              onTap: (index) => _onItemTapped(index, context),
+              items: const [
+                BottomNavigationBarItem(icon: Padding(
+                    padding: EdgeInsets.only(bottom: 4),
+                    child: Icon(Icons.emoji_events)), label: 'Challenges'),
+                BottomNavigationBarItem(icon: Padding(
+                    padding: EdgeInsets.only(bottom: 4),
+                    child: Icon(Icons.history)), label: 'History'),
+                BottomNavigationBarItem(icon: Padding(
+                    padding: EdgeInsets.only(bottom: 4),
+                    child: Icon(Icons.camera_alt)), label: 'Scan'),
+                BottomNavigationBarItem(icon: Padding(
+                    padding: EdgeInsets.only(bottom: 4),
+                    child: Icon(Icons.person)), label: 'Account'),
+              ],
+            ),
+          ),
         )
     );
   }
 
   Widget _buildUserPointer() {
     return Stack(alignment: Alignment.center, children: [
-      Transform.rotate(angle: (userHeading * (math.pi / 180)), child: CustomPaint(size: const Size(120, 120), painter: Pointer())),
-      AnimatedBuilder(animation: _pulseAnimation, builder: (c, _) => Container(width: 22 * _pulseAnimation.value, height: 22 * _pulseAnimation.value, decoration: BoxDecoration(color: Colors.blueAccent.withOpacity(0.2), shape: BoxShape.circle))),
-      Container(width: 18, height: 18, decoration: BoxDecoration(color: Colors.blueAccent, shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 3)))
+      Transform.rotate(angle: (userHeading * (math.pi / 180)),
+          child: CustomPaint(size: const Size(120, 120), painter: Pointer())),
+      AnimatedBuilder(animation: _pulseAnimation,
+          builder: (c, _) =>
+              Container(width: 22 * _pulseAnimation.value,
+                  height: 22 * _pulseAnimation.value,
+                  decoration: BoxDecoration(
+                      color: Colors.blueAccent.withOpacity(0.2),
+                      shape: BoxShape.circle))),
+      Container(width: 18,
+          height: 18,
+          decoration: BoxDecoration(color: Colors.blueAccent,
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white, width: 3)))
     ]);
   }
 
   String getIconForVehicleType(String type) {
     switch (type.toLowerCase().trim()) {
-      case 'electric scooter': return 'lib/assets/imgs/scooter.png';
-      case 'monowheel': return 'lib/assets/imgs/monowheel.png';
-      case 'bike': return 'lib/assets/imgs/bike.png';
-      default: return 'lib/assets/imgs/scooter.png';
+      case 'electric scooter':
+        return 'lib/assets/imgs/scooter.png';
+      case 'monowheel':
+        return 'lib/assets/imgs/monowheel.png';
+      case 'bike':
+        return 'lib/assets/imgs/bike.png';
+      default:
+        return 'lib/assets/imgs/scooter.png';
     }
-  }
+  }void _showVehicleDetails(BuildContext context, dynamic vehicle) {
+    // Викликаємо завантаження
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<RentalController>(context, listen: false).fetchRentalPlans(vehicle.vehicleTypeId);
+    });
 
-  void _showVehicleDetails(BuildContext context, dynamic vehicle) {
+    IconData getBatteryIcon(int level) {
+      if (level >= 80) return Icons.battery_full;
+      if (level >= 60) return Icons.battery_6_bar;
+      if (level >= 40) return Icons.battery_4_bar;
+      if (level >= 20) return Icons.battery_2_bar;
+      return Icons.battery_0_bar;
+    }
+
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      backgroundColor: Colors.transparent,
       builder: (context) => Consumer<RentalController>(
-        builder: (context, controller, child) {
-          if (controller.isLoading) return const SizedBox(height: 150, child: Center(child: CircularProgressIndicator()));
-          return Container(padding: const EdgeInsets.all(20), child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Text("${vehicle.type} ${vehicle.model} ${vehicle.batteryLevel}%", style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 15),
-            Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: controller.plans.map((plan) => _buildPlanBox(plan)).toList()),
-            const SizedBox(height: 20),
-            ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: Colors.black, minimumSize: const Size(double.infinity, 50)), onPressed: () {}, child: const Text("Start", style: TextStyle(color: Colors.white))),
-          ]));
+        builder: (context, rentalCtrl, child) {
+          return Consumer<Controller>(
+            builder: (context, vehicleController, child) {
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: const BoxDecoration(color: Colors.black),
+                child: Container(
+                  padding: const EdgeInsets.all(15),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFD9D9D9),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Заголовок
+                      Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          Text("${vehicle.type} ${vehicle.model}",
+                              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, fontStyle: FontStyle.italic)),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: Container(
+                              width: 26, height: 26,
+                              decoration: BoxDecoration(color: Colors.black, shape: BoxShape.circle, border: Border.all(color: Colors.red, width: 2)),
+                              child: IconButton(
+                                padding: EdgeInsets.zero, constraints: const BoxConstraints(), iconSize: 14,
+                                icon: const Icon(Icons.question_mark, color: Colors.white),
+                                onPressed: () => debugPrint("Support"),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Row(children: [
+                        Icon(getBatteryIcon(vehicle.batteryLevel), size: 45),
+                        Text("${vehicle.batteryLevel}%", style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
+                      ]),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text("Battery life ${vehicleController.calculateRange(vehicle).toStringAsFixed(0)} KM",
+                            style: const TextStyle(fontSize: 18)),
+                      ),
+                      const SizedBox(height: 15),
+                      const Text("The most popular plans for this type of transport", style: TextStyle(fontWeight: FontWeight.w500)),
+                      // Блок планів (Кнопки)
+                      Container(
+                        height: 85,
+                        margin: const EdgeInsets.symmetric(vertical: 10),
+                        child: rentalCtrl.isLoading
+                            ? const Center(child: CircularProgressIndicator(color: Colors.black))
+                            : rentalCtrl.plans.isEmpty
+                            ? const Center(child: Text("No plans available")) // ПЕРЕВІРКА ТУТ
+                            : ListView.builder(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: rentalCtrl.plans.length,
+                          itemBuilder: (context, index) {
+                            final plan = rentalCtrl.plans[index];
+                            final isSelected = rentalCtrl.selectedPlan?.id == plan.id;
+
+                            return GestureDetector(
+                              onTap: () => rentalCtrl.selectPlan(plan),
+                              child: Container(
+                                width: 90,
+                                margin: const EdgeInsets.symmetric(horizontal: 5),
+                                decoration: BoxDecoration(
+                                  color: isSelected ? Colors.white : const Color(0xFFE6FF94),
+                                  border: Border.all(color: Colors.black),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Column(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(vertical: 4),
+                                      width: double.infinity,
+                                      decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: Colors.black))),
+                                      child: Center(child: Text(plan.planName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
+                                    ),
+                                    Padding(
+                                      padding: const EdgeInsets.all(4.0),
+                                      child: Text("${plan.price.toStringAsFixed(1)} Zł\n/${plan.time} min",
+                                          textAlign: TextAlign.center, style: const TextStyle(fontSize: 11)),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      const Text("You can hire this vehicle, just scan the QR code on it",
+                          textAlign: TextAlign.center, style: TextStyle(fontStyle: FontStyle.italic, color: Colors.grey, fontSize: 12)),
+                    ],
+                  ),
+                ),
+              );
+            },
+          );
         },
       ),
     );
   }
 
   Widget _buildPlanBox(RentalPlan plan) {
-    return Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(border: Border.all(color: Colors.black), borderRadius: BorderRadius.circular(8)), child: Column(children: [
-      Text(plan.planName, style: const TextStyle(fontWeight: FontWeight.bold)),
-      Text("${plan.price} Zł/${plan.time > 60 ? 'hour' : 'min'}"),
-    ]));
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+          border: Border.all(color: Colors.blue),
+          borderRadius: BorderRadius.circular(10)),
+      child: Column(
+        children: [
+          Text(plan.planName, style: const TextStyle(fontWeight: FontWeight.bold)),
+          Text("\$${plan.price.toStringAsFixed(0)}"),
+        ],
+      ),
+    );
   }
 }
+
+
 
 class Pointer extends CustomPainter {
   @override
