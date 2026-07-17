@@ -6,11 +6,14 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart' hide Path;
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter_compass/flutter_compass.dart';
+import 'package:mainapp/Controllers/AuthController.dart';
 import 'package:mainapp/Controllers/RentalController.dart';
 import 'package:provider/provider.dart';
 import 'dart:math' as math;
 import '../Controllers/Controller.dart';
 import 'Profile.dart';
+import 'ContactSupport.dart';
+import '../Controllers/UserController.dart';
 
 class MapPage extends StatefulWidget {
   const MapPage({super.key});
@@ -55,8 +58,18 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     _initLocation();
     _initCompass();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      final userController = Provider.of<UserController>(context, listen: false);
+      final authController = Provider.of<AuthController>(context, listen: false);
+
       context.read<Controller>().fetchVehicles();
       context.read<Controller>().startVehiclePolling();
+      final id = authController.userId!;
+      final token = authController.token!;
+      if (authController.userId != null && authController.token != null) {
+        userController.fetchUserName(id, token);
+      }
+
+
     });
   }
 
@@ -133,6 +146,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     final controller = context.watch<Controller>();
     final vehicles = controller.vehicles;
     _ensureFiltersInitialized(vehicles);
+
+
 
     return Scaffold(
         body: Stack(
@@ -342,6 +357,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   }void _showVehicleDetails(BuildContext context, dynamic vehicle) {
     // Викликаємо завантаження
     WidgetsBinding.instance.addPostFrameCallback((_) {
+
       Provider.of<RentalController>(context, listen: false).fetchRentalPlans(vehicle.vehicleTypeId);
     });
 
@@ -372,7 +388,6 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Заголовок
                       Stack(
                         alignment: Alignment.center,
                         children: [
@@ -386,7 +401,18 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                               child: IconButton(
                                 padding: EdgeInsets.zero, constraints: const BoxConstraints(), iconSize: 14,
                                 icon: const Icon(Icons.question_mark, color: Colors.white),
-                                onPressed: () => debugPrint("Support"),
+                                onPressed: () {
+
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => Contactsupport(
+                                        vehicleId: vehicle.id,
+                                        email: Provider.of<UserController>(context, listen: false).userEmail,
+                                      ),
+                                    ),
+                                  );
+                                }
                               ),
                             ),
                           ),
@@ -404,7 +430,6 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                       ),
                       const SizedBox(height: 15),
                       const Text("The most popular plans for this type of transport", style: TextStyle(fontWeight: FontWeight.w500)),
-                      // Блок планів (Кнопки)
                       Container(
                         height: 85,
                         margin: const EdgeInsets.symmetric(vertical: 10),

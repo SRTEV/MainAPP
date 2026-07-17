@@ -1,4 +1,5 @@
 import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -12,6 +13,8 @@ class UserController extends ChangeNotifier {
   bool isLoading = false;
   bool? Deleted;
   int? Role;
+  String? userEmail;
+
 
 
   Future<void> fetchUserName(int id, String token) async {
@@ -35,6 +38,8 @@ class UserController extends ChangeNotifier {
         tempId = data['id'];
         Deleted = data['deleted'];
         Role = data['RoleId'];
+        userEmail = data['email'];
+
        // debugPrint("User name loaded: $userName");
       } else {
         debugPrint("Failed to load user: ${response.statusCode}");
@@ -71,8 +76,36 @@ class UserController extends ChangeNotifier {
     }
 
     }
+  Future<void> giveMeHeplPlease(String text, String type, int? VehicleId , String? email, int? userId) async {
 
+    if (text.isEmpty) {
+      return;
+    }
 
+    final url = Uri.parse('http://$serverApi:5194/api/Report');
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: json.encode({
+          'Text': text,       // Має збігатися з назвою в помилці
+          'Type': type,       // Тип проблеми
+          'email': email,
+          'UserId': userId,
+          'VehicleID': VehicleId,
+        }),
+      );
+
+      if (response.statusCode == 201) {
+        debugPrint("Report created successfully");
+      } else {
+        debugPrint("Failed to create report: ${response.statusCode} - ${response.body}");
+      }
+    } catch (e) {
+      debugPrint("Network error during report creation: $e");
+    }
+  }
   }
 
 

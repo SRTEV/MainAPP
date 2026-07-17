@@ -92,4 +92,9 @@ class Controller extends ChangeNotifier {
     double remainingWh = capacityWh * (vehicle.batteryLevel / 100);
     return remainingWh / vehicle.electricityConsumption;
   }
+
+
+
+
+
 }
