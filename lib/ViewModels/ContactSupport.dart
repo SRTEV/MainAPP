@@ -113,7 +113,7 @@ class ContactsupportState extends State<Contactsupport> {
                     String? result  = await User.giveMeHeplPlease(
                       _problemController.text,
                       _selectedProblem,
-                      widget.vehicleId ?? null,
+                      widget.vehicleId,
                       widget.email,
                       User.tempId,
                     );

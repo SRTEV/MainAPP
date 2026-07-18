@@ -92,8 +92,8 @@ class UserController extends ChangeNotifier {
         url,
         headers: {"Content-Type": "application/json"},
         body: json.encode({
-          'Text': text,       // Має збігатися з назвою в помилці
-          'Type': type,       // Тип проблеми
+          'Text': text,
+          'Type': type,
           'email': email,
           'UserId': userId,
           'VehicleID': VehicleId,

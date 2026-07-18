@@ -131,9 +131,10 @@ class ContactNonLoggedState extends State<ContactNonLogged> {
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                   ),
-                  onPressed: () {
+                  onPressed: () async {
                     final User = context.read<UserController>();
-                    User.giveMeHeplPlease(
+
+                   String? result = await User.giveMeHeplPlease(
                       _problemController.text,
                       _selectedProblem,
                       null,
@@ -141,7 +142,9 @@ class ContactNonLoggedState extends State<ContactNonLogged> {
                       null
                     );
 
-                    Navigator.pop(context);
+                    if (context.mounted) {
+                      Navigator.pop(context, result);
+                    }
                   },
                   child: const Text("Send", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 ),

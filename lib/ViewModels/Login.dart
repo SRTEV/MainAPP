@@ -20,6 +20,29 @@ class _LoginState extends State<Login> {
   void _hideKeyboard() {
     FocusScope.of(context).requestFocus(FocusNode());
   }
+  void _showTopNotification(BuildContext context, String result) {
+    if (!mounted) return;
+    bool isSuccess = result.toLowerCase().contains("success") || result.toLowerCase().contains("created");
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          result,
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        backgroundColor: isSuccess ? Colors.green.shade600 : Colors.red.shade600,
+        behavior: SnackBarBehavior.floating,
+        dismissDirection: DismissDirection.startToEnd,
+        margin: EdgeInsets.only(
+          bottom: MediaQuery.of(context).size.height-75,
+          left: 20,
+          right: 20,
+        ),
+        duration: const Duration(seconds: 4),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -175,12 +198,18 @@ class _LoginState extends State<Login> {
                 Align(
                   alignment: Alignment.centerRight,
                   child: TextButton(
-                    onPressed: () {
+                    onPressed: () async {
                       _hideKeyboard();
-                      Navigator.push(
+
+                      final result = await Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => const ContactNonLogged()),
+                        MaterialPageRoute(
+                          builder: (context) => ContactNonLogged(),
+                        ),
                       );
+                      if (result != null && result is String) {
+                        _showTopNotification(context,result);
+                      }
 
                     },
                     child: const Text("Contact to support", style: TextStyle(color: Colors.grey)),
