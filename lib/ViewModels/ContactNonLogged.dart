@@ -4,26 +4,31 @@ import 'package:http/http.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../Controllers/UserController.dart';
-import '../Controllers/AuthController.dart';
+import '../Controllers/Controller.dart';
 
 
-class Contactsupport extends StatefulWidget {
-  final int? vehicleId;
-  final String? email;
-  const Contactsupport({super.key, this.vehicleId, this.email});
+class ContactNonLogged extends StatefulWidget {
+
+  const ContactNonLogged({super.key});
 
   @override
-  State<Contactsupport> createState() => ContactsupportState();
+  State<ContactNonLogged> createState() => ContactNonLoggedState();
 }
 
-class ContactsupportState extends State<Contactsupport> {
+class ContactNonLoggedState extends State<ContactNonLogged> {
 
   final TextEditingController _problemController = TextEditingController();
-  String _selectedProblem = 'Problem with vehicles';
+  final TextEditingController _emailController = TextEditingController();
+  String _selectedProblem = 'Problem with account';
+  void _hideKeyboard() {
+    FocusScope.of(context).requestFocus(FocusNode());
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return GestureDetector(
+      onTap: _hideKeyboard,
+      child: Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
         child: Padding(
@@ -55,6 +60,26 @@ class ContactsupportState extends State<Contactsupport> {
                 ],
               ),
               const SizedBox(height: 40),
+              TextField(
+                controller: _emailController,
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                decoration: InputDecoration(
+                  hintText: 'kowalski@gmail.com',
+                  hintStyle: TextStyle(color: Colors.grey.shade400),
+                  filled: true,
+                  fillColor: Colors.grey.shade200,
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(20),
+                    borderSide: BorderSide(color: Colors.black, width: 1.5),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(20),
+                    borderSide: BorderSide(color: Colors.black, width: 3),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 7, vertical: 7),
+                ),
+              ),
+              const SizedBox(height: 20),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 decoration: BoxDecoration(
@@ -68,7 +93,7 @@ class ContactsupportState extends State<Contactsupport> {
                     dropdownColor: Colors.grey.shade200,
                     isExpanded: true,
                     icon: const Icon(Icons.keyboard_arrow_down, size: 30),
-                    items: <String>['Problem with vehicles', 'Payment issue', 'Problem with account','Other']
+                    items: <String>['Problem with account','Other']
                         .map((String value) => DropdownMenuItem<String>(value: value, child: Text(value)))
                         .toList(),
                     onChanged: (val) => setState(() => _selectedProblem = val!),
@@ -96,6 +121,7 @@ class ContactsupportState extends State<Contactsupport> {
               ),
 
               const SizedBox(height: 20),
+
               SizedBox(
                 width: double.infinity,
                 height: 50,
@@ -105,25 +131,17 @@ class ContactsupportState extends State<Contactsupport> {
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                   ),
-                  onPressed: () async{
-
+                  onPressed: () {
                     final User = context.read<UserController>();
-
-
-                    String? result  = await User.giveMeHeplPlease(
+                    User.giveMeHeplPlease(
                       _problemController.text,
                       _selectedProblem,
-                      widget.vehicleId ?? null,
-                      widget.email,
-                      User.tempId,
+                      null,
+                      _emailController.text,
+                      null
                     );
 
-
-
-
-                    if (context.mounted) {
-                      Navigator.pop(context, result);
-                    }
+                    Navigator.pop(context);
                   },
                   child: const Text("Send", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 ),
@@ -133,6 +151,7 @@ class ContactsupportState extends State<Contactsupport> {
           ),
         ),
       ),
+      )
     );
   }
 }

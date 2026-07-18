@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import '../Controllers/AuthController.dart';
 
 class UserController extends ChangeNotifier {
   String get serverApi => dotenv.env['SERVER']!;
@@ -14,6 +15,7 @@ class UserController extends ChangeNotifier {
   bool? Deleted;
   int? Role;
   String? userEmail;
+
 
 
 
@@ -76,10 +78,11 @@ class UserController extends ChangeNotifier {
     }
 
     }
-  Future<void> giveMeHeplPlease(String text, String type, int? VehicleId , String? email, int? userId) async {
+  Future<String?> giveMeHeplPlease(String text, String type, int? VehicleId , String? email, int? userId) async {
+    final auth = AuthController();
 
     if (text.isEmpty) {
-      return;
+      return "Text field is empty";
     }
 
     final url = Uri.parse('http://$serverApi:5194/api/Report');
@@ -98,12 +101,12 @@ class UserController extends ChangeNotifier {
       );
 
       if (response.statusCode == 201) {
-        debugPrint("Report created successfully");
+        return "Report created successfully";
       } else {
-        debugPrint("Failed to create report: ${response.statusCode} - ${response.body}");
+        return "Failed to create report: ${response.statusCode} - ${response.body}";
       }
     } catch (e) {
-      debugPrint("Network error during report creation: $e");
+      return "Network error during report creation: $e" ;
     }
   }
   }

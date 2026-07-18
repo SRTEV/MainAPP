@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import 'Register.dart';
 import '../Controllers/AuthController.dart';
 import 'ResetPassword.dart';
+import 'ContactNonLogged.dart';
+
 class Login extends StatefulWidget {
   const Login({super.key});
 
@@ -173,7 +175,14 @@ class _LoginState extends State<Login> {
                 Align(
                   alignment: Alignment.centerRight,
                   child: TextButton(
-                    onPressed: () {},
+                    onPressed: () {
+                      _hideKeyboard();
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const ContactNonLogged()),
+                      );
+
+                    },
                     child: const Text("Contact to support", style: TextStyle(color: Colors.grey)),
                   ),
                 ),

@@ -29,8 +29,6 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   double userHeading = 0.0;
   double targetHeading = 0.0;
   bool Fallow = true;
-
-  // Стан для фільтрів
   bool _isFilterOpen = false;
   Set<String> _visibleTypes = {};
   bool _isInitialized = false;
@@ -42,6 +40,32 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   late Ticker _ticker;
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
+
+
+
+  void _showTopNotification(BuildContext context, String result) {
+    if (!mounted) return;
+    bool isSuccess = result.toLowerCase().contains("success") || result.toLowerCase().contains("created");
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          result,
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        backgroundColor: isSuccess ? Colors.green.shade600 : Colors.red.shade600,
+        behavior: SnackBarBehavior.floating,
+        dismissDirection: DismissDirection.startToEnd,
+        margin: EdgeInsets.only(
+          bottom: MediaQuery.of(context).size.height-250,
+          left: 20,
+          right: 20,
+        ),
+        duration: const Duration(seconds: 4),
+      ),
+    );
+  }
 
   @override
   void initState() {
@@ -180,9 +204,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                         child: GestureDetector(
                           behavior: HitTestBehavior.opaque,
                           onTap: () async {
-                            await context
-                                .read<RentalController>()
-                                .fetchRentalPlans(v.vehicleTypeId);
+                            await context.read<RentalController>().fetchRentalPlans(v.vehicleTypeId);
                             _showVehicleDetails(context, v);
                           },
                           child: Center(
@@ -355,11 +377,11 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         return 'lib/assets/imgs/scooter.png';
     }
   }void _showVehicleDetails(BuildContext context, dynamic vehicle) {
-    // Викликаємо завантаження
     WidgetsBinding.instance.addPostFrameCallback((_) {
-
       Provider.of<RentalController>(context, listen: false).fetchRentalPlans(vehicle.vehicleTypeId);
     });
+
+    final BuildContext scaffoldContext = context;
 
     IconData getBatteryIcon(int level) {
       if (level >= 80) return Icons.battery_full;
@@ -401,18 +423,24 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                               child: IconButton(
                                 padding: EdgeInsets.zero, constraints: const BoxConstraints(), iconSize: 14,
                                 icon: const Icon(Icons.question_mark, color: Colors.white),
-                                onPressed: () {
+                                  onPressed: () async {
+                                  Navigator.pop(context);
 
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => Contactsupport(
-                                        vehicleId: vehicle.id,
-                                        email: Provider.of<UserController>(context, listen: false).userEmail,
+
+
+                                    final result = await Navigator.push(
+                                      scaffoldContext,
+                                      MaterialPageRoute(
+                                        builder: (context) => Contactsupport(
+                                          vehicleId: vehicle.id,
+                                          email: Provider.of<UserController>(scaffoldContext, listen: false).userEmail,
+                                        ),
                                       ),
-                                    ),
-                                  );
-                                }
+                                    );
+                                    if (result != null && result is String) {
+                                      _showTopNotification(scaffoldContext,result);
+                                    }
+                                  }
                               ),
                             ),
                           ),
@@ -436,7 +464,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                         child: rentalCtrl.isLoading
                             ? const Center(child: CircularProgressIndicator(color: Colors.black))
                             : rentalCtrl.plans.isEmpty
-                            ? const Center(child: Text("No plans available")) // ПЕРЕВІРКА ТУТ
+                            ? const Center(child: Text("No plans available"))
                             : ListView.builder(
                           scrollDirection: Axis.horizontal,
                           itemCount: rentalCtrl.plans.length,

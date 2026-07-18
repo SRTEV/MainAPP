@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:mainapp/ViewModels/ContactSupport.dart' hide Contactsupport;
 import 'package:provider/provider.dart';
 import '../Controllers/UserController.dart';
 import '../Controllers/AuthController.dart';
 import 'Login.dart';
 import 'DeleteAccount.dart';
+import 'ContactSupport.dart';
 
 class Profile extends StatefulWidget {
   const Profile({super.key});
@@ -14,23 +16,19 @@ class Profile extends StatefulWidget {
 }
 
 class _ProfileState extends State<Profile> {
-  @override
+  // Видалено зайвий @override
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final auth = context.read<AuthController>();
-      final user = context.read<UserController>();
-
-      if (auth.userId != null && auth.token != null) {
-        user.fetchUserName(auth.userId!, auth.token!);
-      }
+      // ...
     });
   }
 
   @override
   Widget build(BuildContext context) {
     final userModel = context.watch<UserController>();
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -60,6 +58,7 @@ class _ProfileState extends State<Profile> {
                     : "Loading...",
                 style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.w700),
               ),
+
               if (userModel.balance != null && userModel.balance! > 0.0) ...[
                 const SizedBox(height: 10),
                 _buildActionButton("Pay outstanding balance", Colors.red, () {
@@ -80,8 +79,43 @@ class _ProfileState extends State<Profile> {
 
               const SizedBox(height: 120),
 
-              _buildActionButton("Contact to support", Colors.black, () {
-                debugPrint("Support pressed");
+              _buildActionButton("Contact to support", Colors.black, () async {
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => Contactsupport(
+                      vehicleId: null,
+                      email: context.read<UserController>().userEmail,
+                    ),
+                  ),
+                );
+
+                if (result != null && result is String && mounted) {
+                  bool isSuccess = result.contains("success");
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        result,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                      ),
+                      backgroundColor: isSuccess ? Colors.green.shade600 : Colors.red.shade600,
+                      behavior: SnackBarBehavior.floating,
+
+                      dismissDirection: DismissDirection.startToEnd,
+
+                      margin: EdgeInsets.only(
+                        bottom: MediaQuery.of(context).size.height - 75,
+                        left: 20,
+                        right: 20,
+                      ),
+                      duration: const Duration(seconds: 4),
+
+                    ),
+                  );
+                }
+
               }, horizontalPadding: 75),
 
               const SizedBox(height: 20),
@@ -95,8 +129,6 @@ class _ProfileState extends State<Profile> {
               ),
 
               const SizedBox(height: 90),
-
-              // --- Logout & Delete ---
               _buildActionButton("Log out", Colors.grey, () {
                 final auth = context.read<AuthController>();
                 auth.clearMessage();
