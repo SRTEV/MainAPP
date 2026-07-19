@@ -7,6 +7,7 @@ import '../Controllers/AuthController.dart';
 import 'Login.dart';
 import 'DeleteAccount.dart';
 import 'ContactSupport.dart';
+import 'AddCart.dart';
 
 class Profile extends StatefulWidget {
   const Profile({super.key});
@@ -68,14 +69,24 @@ class _ProfileState extends State<Profile> {
 
               const SizedBox(height: 40),
 
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Text("Payment card:", style: GoogleFonts.inter(fontSize: 17, fontWeight: FontWeight.w700)),
-              ),
-              const SizedBox(height: 10),
-              _buildActionButton("Add payment card", Colors.black, () {
-                debugPrint("Add card pressed");
-              }, horizontalPadding: 75),
+              if (userModel.cardId == null) ...[
+                _buildActionButton("Add payment card", Colors.black, () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const AddCard()),
+                  );
+                }, horizontalPadding: 75),
+              ] else ...[
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    "Your card: ${userModel.cardId}", // або userModel.cardNumber
+                    style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.green),
+
+
+                  ),
+                ),
+              ],
 
               const SizedBox(height: 120),
 

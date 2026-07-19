@@ -15,6 +15,8 @@ class UserController extends ChangeNotifier {
   bool? Deleted;
   int? Role;
   String? userEmail;
+  int? cardId;
+
 
 
 
@@ -41,6 +43,8 @@ class UserController extends ChangeNotifier {
         Deleted = data['deleted'];
         Role = data['RoleId'];
         userEmail = data['email'];
+        cardId = data['cardId'];
+
 
        // debugPrint("User name loaded: $userName");
       } else {
@@ -78,6 +82,9 @@ class UserController extends ChangeNotifier {
     }
 
     }
+
+
+
   Future<String?> giveMeHeplPlease(String text, String type, int? VehicleId , String? email, int? userId) async {
     final auth = AuthController();
 
@@ -109,6 +116,44 @@ class UserController extends ChangeNotifier {
       return "Network error during report creation: $e" ;
     }
   }
+
+  Future<String?> addCard(String cardNumber, String cvv, String expiryDate, String token) async {
+    String formattedDate = "";
+    try {
+      final parts = expiryDate.split('/');
+      formattedDate = "20${parts[1]}-${parts[0]}-01";
+    } catch (e) {
+      return "Invalid date format. Use MM/YY";
+    }
+
+    final url = Uri.parse('http://$serverApi:5194/api/Card');
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $token",
+        },
+        body: json.encode({
+          'cardNumber': cardNumber, // Змінено на camelCase
+          'expiryDate': formattedDate, // Формат РРРР-ММ-ДД
+          'cvvCode': cvv, // Змінено на 'cvvCode' (згідно з вашою моделлю)
+        }),
+      );
+
+      if (response.statusCode == 201) {
+        return "Success: Card added successfully";
+      } else {
+        return "Failed to add card: ${response.statusCode} - ${response.body}";
+      }
+    } catch (e) {
+      return "Network error: $e";
+    }
   }
+  }
+
+
+
 
 

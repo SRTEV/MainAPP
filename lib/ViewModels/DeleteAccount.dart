@@ -83,7 +83,6 @@ class _DeleteAccountState extends State<DeleteAccount> {
                       onPressed: () async {
                         _hideKeyboard();
 
-                        // 1. Локальна валідація
                         if (_passwordController.text.isEmpty || _confirmController.text != "DELETE") {
                           authController.setMessage("Please check your input", isError: true);
                           setState(() {
@@ -92,22 +91,14 @@ class _DeleteAccountState extends State<DeleteAccount> {
                           });
                           return;
                         }
-
-                        // 2. Виклик методу видалення через UserController
-                        // Примітка: переконайтеся, що в UserController метод deleteAccount
-                        // приймає (userId, password) і відправляє їх на сервер
-                        // 2. Виклик методу видалення через UserController
                         try {
-                          // Використовуємо authController для отримання токена та ID
                           final auth = context.read<AuthController>();
 
                           await userController.deleteAccount(
                               auth.userId!,
                               _passwordController.text,
-                              auth.token! // <--- Додайте третій аргумент: токен
+                              auth.token!
                           );
-
-                          // 3. Успіх: очищаємо дані та перенаправляємо
                           auth.clearSomeData();
 
                           if (context.mounted) {
