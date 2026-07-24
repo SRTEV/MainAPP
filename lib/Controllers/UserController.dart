@@ -1,8 +1,9 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:http/http.dart' as http;
+
 import '../Controllers/AuthController.dart';
 
 class UserController extends ChangeNotifier {
@@ -136,13 +137,13 @@ class UserController extends ChangeNotifier {
           "Authorization": "Bearer $token",
         },
         body: json.encode({
-          'cardNumber': cardNumber, // Змінено на camelCase
-          'expiryDate': formattedDate, // Формат РРРР-ММ-ДД
-          'cvvCode': cvv, // Змінено на 'cvvCode' (згідно з вашою моделлю)
+          'cardNumber': cardNumber,
+          'expiryDate': formattedDate,
+          'cvvCode': cvv,
         }),
       );
 
-      if (response.statusCode == 201) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         return "Success: Card added successfully";
       } else {
         return "Failed to add card: ${response.statusCode} - ${response.body}";
@@ -151,7 +152,68 @@ class UserController extends ChangeNotifier {
       return "Network error: $e";
     }
   }
+
+  Future<String?> deleteCard(int cardId, String token) async {
+    final url = Uri.parse('http://$serverApi:5194/api/Card/delete/$cardId');
+    try {
+      final response = await http.delete(
+        url,
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $token",
+        },
+      );
+
+      if (response.statusCode == 204 || response.statusCode == 200) {
+        return "Success: Card deleted";
+      } else {
+        return "Error: Failed to delete card";
+      }
+    } catch (e) {
+      return "Error: $e";
+    }
   }
+
+  Future<String?> updateCard(int userId, String token, String cardNumber,
+      String cvv, String expiryDate) async {
+    String formattedDate = "";
+    try {
+      final parts = expiryDate.split('/');
+      formattedDate = "20${parts[1]}-${parts[0]}-01";
+    } catch (e) {
+      return "Invalid date format. Use MM/YY";
+    }
+
+    final url = Uri.parse('http://$serverApi:5194/api/Card/$cardId');
+
+    try {
+      final response = await http.put(
+        url,
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $token",
+        },
+        body: json.encode({
+          'cardNumber': cardNumber,
+          'expiryDate': formattedDate,
+          'cvvCode': cvv,
+        }),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return "Success: Card updated successfully";
+      } else {
+        return "Failed to update card: ${response.statusCode} - ${response
+            .body}";
+      }
+    } catch (e) {
+      return "Network error: $e";
+    }
+  }
+
+}
+
+
 
 
 

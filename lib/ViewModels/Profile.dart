@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:mainapp/ViewModels/ContactSupport.dart' hide Contactsupport;
 import 'package:provider/provider.dart';
-import '../Controllers/UserController.dart';
+
 import '../Controllers/AuthController.dart';
-import 'Login.dart';
-import 'DeleteAccount.dart';
-import 'ContactSupport.dart';
+import '../Controllers/UserController.dart';
 import 'AddCart.dart';
+import 'ChangeCard.dart';
+import 'ContactSupport.dart';
+import 'DeleteAccount.dart';
+import 'Login.dart';
 
 class Profile extends StatefulWidget {
   const Profile({super.key});
@@ -17,7 +18,6 @@ class Profile extends StatefulWidget {
 }
 
 class _ProfileState extends State<Profile> {
-  // Видалено зайвий @override
   @override
   void initState() {
     super.initState();
@@ -80,15 +80,153 @@ class _ProfileState extends State<Profile> {
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    "Your card: ${userModel.cardId}", // або userModel.cardNumber
-                    style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.green),
-
-
+                    "Payment card:",
+                    style: GoogleFonts.inter(fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black54),
                   ),
                 ),
+                const SizedBox(height: 8),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 15, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Colors.black, width: 2.0),
+                  ),
+                  child: Text(
+                    "****************", // Replace with the actual card number
+
+                    style: GoogleFonts.inter(
+                        fontSize: 16, letterSpacing: 2, color: Colors.black87),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildActionButton(
+                        "Change payment card",
+                        Colors.black,
+                            () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) => const Changecard()),
+                          );
+                        },
+                        horizontalPadding: 0,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildActionButton(
+                        "Remove payment card",
+                        Colors.black,
+                            () {
+                          showDialog(
+                            context: context,
+                            builder: (BuildContext context) {
+                              return AlertDialog(
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                title: Text(
+                                  "Delete Payment Card",
+                                  style: GoogleFonts.inter(
+                                      fontWeight: FontWeight.w700),
+                                ),
+                                content: Text(
+                                  "Are you sure you want to remove your payment card?",
+                                  style: GoogleFonts.inter(),
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context),
+                                    child: const Text("Cancel",
+                                        style: TextStyle(color: Colors.black)),
+                                  ),
+                                  ElevatedButton(
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.red,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                    ),
+                                    onPressed: () async {
+                                      Navigator.pop(context);
+
+                                      final userCtrl = context.read<
+                                          UserController>();
+                                      final authCtrl = context.read<
+                                          AuthController>();
+
+                                      int cardId = int.parse(
+                                          userModel.cardId.toString());
+                                      String? message = await userCtrl
+                                          .deleteCard(cardId, authCtrl.token!);
+
+                                      if (context.mounted) {
+                                        bool isSuccess = message != null &&
+                                            message.contains("Success");
+
+                                        ScaffoldMessenger
+                                            .of(context)
+                                            .showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                              message ?? "Done",
+                                              textAlign: TextAlign.center,
+                                              style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontWeight: FontWeight.bold),
+                                            ),
+                                            backgroundColor: isSuccess ? Colors
+                                                .green.shade600 : Colors.red
+                                                .shade600,
+                                            behavior: SnackBarBehavior.floating,
+                                            dismissDirection: DismissDirection
+                                                .startToEnd,
+                                            margin: EdgeInsets.only(
+                                              bottom: MediaQuery
+                                                  .of(context)
+                                                  .size
+                                                  .height - 90,
+                                              left: 20,
+                                              right: 20,
+                                            ),
+                                            duration: const Duration(
+                                                seconds: 4),
+                                          ),
+                                        );
+
+                                        if (isSuccess) {
+                                          await userCtrl.fetchUserName(
+                                              authCtrl.userId!,
+                                              authCtrl.token!);
+                                          setState(() {});
+                                        }
+                                      }
+                                    },
+                                    child: const Text("Delete",
+                                        style: TextStyle(color: Colors.white)),
+                                  ),
+                                ],
+                              );
+                            },
+                          );
+                        },
+                        horizontalPadding: 0,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 40),
               ],
 
-              const SizedBox(height: 120),
+              const SizedBox(height: 95),
 
               _buildActionButton("Contact to support", Colors.black, () async {
                 final result = await Navigator.push(
@@ -113,20 +251,19 @@ class _ProfileState extends State<Profile> {
                       ),
                       backgroundColor: isSuccess ? Colors.green.shade600 : Colors.red.shade600,
                       behavior: SnackBarBehavior.floating,
-
                       dismissDirection: DismissDirection.startToEnd,
-
                       margin: EdgeInsets.only(
-                        bottom: MediaQuery.of(context).size.height - 75,
+                        bottom: MediaQuery
+                            .of(context)
+                            .size
+                            .height - 90,
                         left: 20,
                         right: 20,
                       ),
                       duration: const Duration(seconds: 4),
-
                     ),
                   );
                 }
-
               }, horizontalPadding: 75),
 
               const SizedBox(height: 20),
@@ -160,7 +297,6 @@ class _ProfileState extends State<Profile> {
                   MaterialPageRoute(builder: (context) => const DeleteAccount()),
                 );
               }, horizontalPadding: 90),
-              const SizedBox(height: 40),
             ],
           ),
         ),
