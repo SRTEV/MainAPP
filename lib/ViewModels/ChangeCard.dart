@@ -102,32 +102,6 @@ class _ChangecardState extends State<Changecard> {
     return isValid;
   }
 
-  void _showTopSnackBar(String message, bool isSuccess) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          message,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        backgroundColor: isSuccess
-            ? Colors.green.shade600
-            : Colors.red.shade600,
-        behavior: SnackBarBehavior.floating,
-        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
-        margin: EdgeInsets.only(
-          bottom: MediaQuery.of(context).size.height - 75,
-          left: 0,
-          right: 0,
-        ),
-        duration: const Duration(seconds: 4),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -255,7 +229,6 @@ class _ChangecardState extends State<Changecard> {
                       if (context.mounted) {
                         bool isSuccess =
                             message != null && message.contains("Success");
-                        _showTopSnackBar(message ?? "Error", isSuccess);
                         if (isSuccess) {
                           _cardNumberController.clear();
                           _cvvController.clear();
@@ -264,8 +237,8 @@ class _ChangecardState extends State<Changecard> {
                             authCtrl.userId!,
                             authCtrl.token!,
                           );
-                          Navigator.pop(context);
                         }
+                        Navigator.pop(context, message);
                       }
                     },
                     style: ElevatedButton.styleFrom(

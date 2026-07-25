@@ -1,19 +1,21 @@
 import 'dart:async';
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:flutter_compass/flutter_compass.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart' hide Path;
 import 'package:geolocator/geolocator.dart';
-import 'package:flutter_compass/flutter_compass.dart';
+import 'package:latlong2/latlong.dart' hide Path;
 import 'package:mainapp/Controllers/AuthController.dart';
 import 'package:mainapp/Controllers/RentalController.dart';
 import 'package:provider/provider.dart';
-import 'dart:math' as math;
+
 import '../Controllers/Controller.dart';
-import 'Profile.dart';
-import 'ContactSupport.dart';
 import '../Controllers/UserController.dart';
+import 'ContactSupport.dart';
+import 'Profile.dart';
 
 class MapPage extends StatefulWidget {
   const MapPage({super.key});
@@ -45,8 +47,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
 
   void _showTopNotification(BuildContext context, String result) {
     if (!mounted) return;
-    bool isSuccess = result.toLowerCase().contains("success") || result.toLowerCase().contains("created");
-
+    bool isSuccess = result.toLowerCase().contains("success");
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
@@ -66,6 +67,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       ),
     );
   }
+
 
   @override
   void initState() {
@@ -421,10 +423,13 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                               width: 26, height: 26,
                               decoration: BoxDecoration(color: Colors.black, shape: BoxShape.circle, border: Border.all(color: Colors.red, width: 2)),
                               child: IconButton(
-                                padding: EdgeInsets.zero, constraints: const BoxConstraints(), iconSize: 14,
-                                icon: const Icon(Icons.question_mark, color: Colors.white),
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(),
+                                  iconSize: 14,
+                                  icon: const Icon(
+                                      Icons.question_mark, color: Colors.white),
                                   onPressed: () async {
-                                  Navigator.pop(context);
+                                    Navigator.pop(context);
 
 
 

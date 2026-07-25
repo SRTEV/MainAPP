@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-import 'Register.dart';
+
 import '../Controllers/AuthController.dart';
-import 'ResetPassword.dart';
 import 'ContactNonLogged.dart';
+import 'Register.dart';
+import 'ResetPassword.dart';
 
 class Login extends StatefulWidget {
   const Login({super.key});
@@ -19,29 +20,6 @@ class _LoginState extends State<Login> {
 
   void _hideKeyboard() {
     FocusScope.of(context).requestFocus(FocusNode());
-  }
-  void _showTopNotification(BuildContext context, String result) {
-    if (!mounted) return;
-    bool isSuccess = result.toLowerCase().contains("success") || result.toLowerCase().contains("created");
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          result,
-          textAlign: TextAlign.center,
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
-        backgroundColor: isSuccess ? Colors.green.shade600 : Colors.red.shade600,
-        behavior: SnackBarBehavior.floating,
-        dismissDirection: DismissDirection.startToEnd,
-        margin: EdgeInsets.only(
-          bottom: MediaQuery.of(context).size.height-75,
-          left: 20,
-          right: 20,
-        ),
-        duration: const Duration(seconds: 4),
-      ),
-    );
   }
 
   @override
@@ -208,7 +186,7 @@ class _LoginState extends State<Login> {
                         ),
                       );
                       if (result != null && result is String) {
-                        _showTopNotification(context,result);
+                        viewModel.setMessage(result);
                       }
 
                     },

@@ -211,6 +211,35 @@ class UserController extends ChangeNotifier {
     }
   }
 
+  Future<String?> updateUser(int userId, String name, String email,
+      String token) async {
+    final url = Uri.parse(
+        'http://$serverApi:5194/api/User/ChangeAccountInfo/$userId');
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $token",
+        },
+        body: json.encode({
+          'name': name,
+          'email': email,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        return "Success: Account updated successfully";
+      } else {
+        return "Failed to update account: ${response.statusCode} - ${response
+            .body}";
+      }
+    } catch (e) {
+      return "Network error: $e";
+    }
+  }
+
 }
 
 

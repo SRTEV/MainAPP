@@ -8,6 +8,7 @@ import 'AddCart.dart';
 import 'ChangeCard.dart';
 import 'ContactSupport.dart';
 import 'DeleteAccount.dart';
+import 'EditProfile.dart';
 import 'Login.dart';
 
 class Profile extends StatefulWidget {
@@ -18,13 +19,63 @@ class Profile extends StatefulWidget {
 }
 
 class _ProfileState extends State<Profile> {
+  OverlayEntry? _lastOverlayEntry;
+  String? _lastMessage;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      // ...
     });
   }
+
+
+  void notification(String message, bool isSuccess) {
+    if (!mounted) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+    final topPadding = MediaQuery
+        .of(context)
+        .padding
+        .top;
+
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          message,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 14,
+          ),
+        ),
+        backgroundColor: isSuccess ? Colors.green.shade600 : Colors.red
+            .shade600,
+        behavior: SnackBarBehavior.floating,
+        margin: EdgeInsets.only(
+          top: topPadding + 5,
+          left: 20,
+          right: 20,
+          bottom: MediaQuery
+              .of(context)
+              .size
+              .height - topPadding - 70,
+        ),
+
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(15),
+        ),
+        elevation: 10,
+        duration: const Duration(seconds: 4),
+        dismissDirection: DismissDirection.horizontal,
+      ),
+    );
+  }
+
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -70,11 +121,18 @@ class _ProfileState extends State<Profile> {
               const SizedBox(height: 40),
 
               if (userModel.cardId == null) ...[
-                _buildActionButton("Add payment card", Colors.black, () {
-                  Navigator.push(
+                _buildActionButton("Add payment card", Colors.black, () async {
+                  final result = await Navigator.push(
                     context,
                     MaterialPageRoute(builder: (context) => const AddCard()),
                   );
+
+                  if (result != null && result is String && mounted) {
+                    bool isSuccess = result.contains("Success");
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      notification(result, isSuccess);
+                    });
+                  }
                 }, horizontalPadding: 75),
               ] else ...[
                 Align(
@@ -110,12 +168,19 @@ class _ProfileState extends State<Profile> {
                       child: _buildActionButton(
                         "Change payment card",
                         Colors.black,
-                            () {
-                          Navigator.push(
+                            () async {
+                          final result = await Navigator.push(
                             context,
                             MaterialPageRoute(
                                 builder: (context) => const Changecard()),
                           );
+
+                          if (result != null && result is String && mounted) {
+                            bool isSuccess = result.contains("Success");
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              notification(result, isSuccess);
+                            });
+                          }
                         },
                         horizontalPadding: 0,
                       ),
@@ -172,35 +237,8 @@ class _ProfileState extends State<Profile> {
                                         bool isSuccess = message != null &&
                                             message.contains("Success");
 
-                                        ScaffoldMessenger
-                                            .of(context)
-                                            .showSnackBar(
-                                          SnackBar(
-                                            content: Text(
-                                              message ?? "Done",
-                                              textAlign: TextAlign.center,
-                                              style: const TextStyle(
-                                                  color: Colors.white,
-                                                  fontWeight: FontWeight.bold),
-                                            ),
-                                            backgroundColor: isSuccess ? Colors
-                                                .green.shade600 : Colors.red
-                                                .shade600,
-                                            behavior: SnackBarBehavior.floating,
-                                            dismissDirection: DismissDirection
-                                                .startToEnd,
-                                            margin: EdgeInsets.only(
-                                              bottom: MediaQuery
-                                                  .of(context)
-                                                  .size
-                                                  .height - 90,
-                                              left: 20,
-                                              right: 20,
-                                            ),
-                                            duration: const Duration(
-                                                seconds: 4),
-                                          ),
-                                        );
+                                        notification(
+                                            message ?? "Done", isSuccess);
 
                                         if (isSuccess) {
                                           await userCtrl.fetchUserName(
@@ -239,30 +277,13 @@ class _ProfileState extends State<Profile> {
                   ),
                 );
 
+
                 if (result != null && result is String && mounted) {
                   bool isSuccess = result.contains("success");
-
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        result,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                      ),
-                      backgroundColor: isSuccess ? Colors.green.shade600 : Colors.red.shade600,
-                      behavior: SnackBarBehavior.floating,
-                      dismissDirection: DismissDirection.startToEnd,
-                      margin: EdgeInsets.only(
-                        bottom: MediaQuery
-                            .of(context)
-                            .size
-                            .height - 90,
-                        left: 20,
-                        right: 20,
-                      ),
-                      duration: const Duration(seconds: 4),
-                    ),
-                  );
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    notification(result, isSuccess);
+                  });
+                  debugPrint(result);
                 }
               }, horizontalPadding: 75),
 
@@ -270,7 +291,20 @@ class _ProfileState extends State<Profile> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  _buildActionButton("Edit profile", Colors.black, () {}, horizontalPadding: 30),
+                  _buildActionButton("Edit profile", Colors.black, () async {
+                    final result = await Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (
+                          context) => const EditProfile()),
+                    );
+
+                    if (result != null && result is String && mounted) {
+                      bool isSuccess = result.contains("Success");
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        notification(result, isSuccess);
+                      });
+                    }
+                  }, horizontalPadding: 30),
                   const SizedBox(width: 15),
                   _buildActionButton("Edit password", Colors.black, () {}, horizontalPadding: 20),
                 ],
