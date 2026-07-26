@@ -295,9 +295,8 @@ class _ProfileState extends State<Profile> {
                   _buildActionButton("Edit profile", Colors.black, () async {
                     final result = await Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (
-                          context) => const EditProfile()),
-                    );
+                      MaterialPageRoute(builder: (context) => EditProfile(),
+                      ));
 
                     if (result != null && result is String && mounted) {
                       bool isSuccess = result.contains("Success");
@@ -319,7 +318,7 @@ class _ProfileState extends State<Profile> {
                     );
 
                     if (result != null && result is String && mounted) {
-                      bool isSuccess = result.contains("Success");
+                      bool isSuccess = result.contains("success");
                       WidgetsBinding.instance.addPostFrameCallback((_) {
                         notification(result, isSuccess);
                       });

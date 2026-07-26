@@ -16,7 +16,7 @@ class Editpassword extends StatefulWidget {
 class EditpasswordState extends State<Editpassword> {
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController =
-      TextEditingController();
+  TextEditingController();
 
   void _hideKeyboard() {
     FocusScope.of(context).requestFocus(FocusNode());
@@ -27,6 +27,126 @@ class EditpasswordState extends State<Editpassword> {
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
+  }
+
+  // Метод для показу модального вікна підтвердження
+  void _showConfirmationDialog(BuildContext context) {
+    _hideKeyboard();
+    final viewModel = context.read<AuthController>();
+    viewModel.clearMessage();
+
+    // Проста валідація перед відкриттям модалки
+    if (_passwordController.text.isEmpty ||
+        _confirmPasswordController.text.isEmpty) {
+      viewModel.setMessage("Please enter all fields", isError: true);
+      return;
+    }
+    if (_passwordController.text.length < 8) {
+      viewModel.setMessage(
+          "Password must be at least 8 characters", isError: true);
+      return;
+    }
+    if (_passwordController.text != _confirmPasswordController.text) {
+      viewModel.setMessage("Passwords do not match", isError: true);
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          content: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(height: 10),
+                Text(
+                  "Are you sure you want to edit your\npassword?",
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.inter(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black,
+                  ),
+                ),
+                const SizedBox(height: 30),
+                Row(
+                  children: [
+                    Expanded(
+                      child: SizedBox(
+                        height: 50,
+                        child: ElevatedButton(
+                          onPressed: () => Navigator.pop(dialogContext),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.black,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(15),
+                            ),
+                          ),
+                          child: const Text(
+                            "Cancel",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 15),
+                    Expanded(
+                      child: SizedBox(
+                        height: 50,
+                        child: ElevatedButton(
+                          onPressed: () async {
+                            Navigator.pop(dialogContext); // Закриваємо модалку
+
+                            // Викликаємо зміну пароля через контролер
+                            await viewModel.changelogedPassword(
+                              _passwordController.text,
+                              _confirmPasswordController.text,
+                            );
+
+                            // Перевіряємо, чи зміни пройшли успішно (немає помилки в повідомленні)
+                            if (context.mounted) {
+                              if (viewModel.message.toLowerCase().contains(
+                                  "success")) {
+                                // Повертаємось на Profile і передаємо текст нотифікації
+                                Navigator.pop(context, viewModel.message);
+                              }
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.black,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(15),
+                            ),
+                          ),
+                          child: const Text(
+                            "Save",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -83,7 +203,6 @@ class EditpasswordState extends State<Editpassword> {
                 const SizedBox(height: 8),
                 Container(
                   height: 48,
-                  // Зменшена висота для більшої вузькості/компактності
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(color: Colors.black, width: 1.5),
@@ -101,7 +220,6 @@ class EditpasswordState extends State<Editpassword> {
                         horizontal: 16,
                         vertical: 11,
                       ),
-                      // Компактні відступи всередині
                       border: InputBorder.none,
                       hintText: '********',
                       hintStyle: TextStyle(color: Colors.grey.shade400),
@@ -117,7 +235,7 @@ class EditpasswordState extends State<Editpassword> {
                 ),
                 const SizedBox(height: 8),
                 Container(
-                  height: 48, // Зменшена висота
+                  height: 48,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(color: Colors.black, width: 1.5),
@@ -135,7 +253,6 @@ class EditpasswordState extends State<Editpassword> {
                         horizontal: 16,
                         vertical: 11,
                       ),
-                      // Компактні відступи всередині
                       border: InputBorder.none,
                       hintText: '********',
                       hintStyle: TextStyle(color: Colors.grey.shade400),
@@ -168,17 +285,7 @@ class EditpasswordState extends State<Editpassword> {
                           borderRadius: BorderRadius.circular(30),
                         ),
                       ),
-                      onPressed: () async {
-                        viewModel.clearMessage();
-                        _hideKeyboard();
-
-                        await viewModel.changelogedPassword(
-                          context,
-                          _passwordController.text,
-                          _confirmPasswordController.text,
-                        );
-                        Navigator.pop(context);
-                      },
+                      onPressed: () => _showConfirmationDialog(context),
                       child: const Text(
                         "Save",
                         style: TextStyle(

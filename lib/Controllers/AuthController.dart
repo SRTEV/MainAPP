@@ -229,31 +229,35 @@ class AuthController extends ChangeNotifier {
     }
   }
 
-  Future<void> changelogedPassword(BuildContext context, String newPassword,
+  Future<String?> changelogedPassword(String newPassword,
       String confirmPassword) async {
     clearMessage();
 
     if (newPassword.isEmpty || confirmPassword.isEmpty) {
       passwordBorderColor = Colors.red;
-      setMessage("Please enter all fields", isError: true);
-      return;
+      const msg = "Please enter all fields";
+      setMessage(msg, isError: true);
+      return msg;
     }
 
     if (newPassword.length < 8) {
       passwordBorderColor = Colors.red;
-      setMessage("Password must be at least 8 characters", isError: true);
-      return;
+      const msg = "Password must be at least 8 characters";
+      setMessage(msg, isError: true);
+      return msg;
     }
 
     if (newPassword != confirmPassword) {
       passwordBorderColor = Colors.red;
-      setMessage("Passwords do not match", isError: true);
-      return;
+      const msg = "Passwords do not match";
+      setMessage(msg, isError: true);
+      return msg;
     }
 
     if (token == null || userId == null) {
-      setMessage("User not authenticated", isError: true);
-      return;
+      const msg = "User not authenticated";
+      setMessage(msg, isError: true);
+      return msg;
     }
 
     try {
@@ -271,15 +275,19 @@ class AuthController extends ChangeNotifier {
       );
 
       if (response.statusCode == 200) {
-        setMessage("Password changed successfully!");
+        const msg = "Password changed successfully! Success";
+        setMessage(msg);
+        return msg;
       } else {
         final errorData = json.decode(response.body);
-        setMessage(
-            errorData['message'] ?? "Error changing password", isError: true);
+        final msg = errorData['message'] ?? "Error changing password";
+        setMessage(msg, isError: true);
+        return msg;
       }
     } catch (e) {
-      setMessage("Connection error", isError: true);
+      const msg = "Connection error";
+      setMessage(msg, isError: true);
+      return msg;
     }
   }
-
 }
