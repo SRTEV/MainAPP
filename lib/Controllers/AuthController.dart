@@ -1,7 +1,9 @@
 import 'dart:convert';
+
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:http/http.dart' as http;
+
 import '../ViewModels/map.dart';
 
 class AuthController extends ChangeNotifier {
@@ -226,4 +228,58 @@ class AuthController extends ChangeNotifier {
       setMessage("Connection error", isError: true);
     }
   }
+
+  Future<void> changelogedPassword(BuildContext context, String newPassword,
+      String confirmPassword) async {
+    clearMessage();
+
+    if (newPassword.isEmpty || confirmPassword.isEmpty) {
+      passwordBorderColor = Colors.red;
+      setMessage("Please enter all fields", isError: true);
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      passwordBorderColor = Colors.red;
+      setMessage("Password must be at least 8 characters", isError: true);
+      return;
+    }
+
+    if (newPassword != confirmPassword) {
+      passwordBorderColor = Colors.red;
+      setMessage("Passwords do not match", isError: true);
+      return;
+    }
+
+    if (token == null || userId == null) {
+      setMessage("User not authenticated", isError: true);
+      return;
+    }
+
+    try {
+      final response = await http.post(
+        Uri.parse(
+            'http://$serverApi:5194/api/User/ChangeLoggedPassword/$userId'),
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $token",
+        },
+        body: json.encode({
+          'NewPassword': newPassword,
+          'Token': ''
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        setMessage("Password changed successfully!");
+      } else {
+        final errorData = json.decode(response.body);
+        setMessage(
+            errorData['message'] ?? "Error changing password", isError: true);
+      }
+    } catch (e) {
+      setMessage("Connection error", isError: true);
+    }
+  }
+
 }

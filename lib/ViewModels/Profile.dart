@@ -8,6 +8,7 @@ import 'AddCart.dart';
 import 'ChangeCard.dart';
 import 'ContactSupport.dart';
 import 'DeleteAccount.dart';
+import 'EditPassword.dart';
 import 'EditProfile.dart';
 import 'Login.dart';
 
@@ -306,7 +307,24 @@ class _ProfileState extends State<Profile> {
                     }
                   }, horizontalPadding: 30),
                   const SizedBox(width: 15),
-                  _buildActionButton("Edit password", Colors.black, () {}, horizontalPadding: 20),
+                  _buildActionButton("Edit password", Colors.black, () async {
+                    final authController = Provider.of<AuthController>(
+                        context, listen: false);
+
+
+                    final result = await Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) =>
+                          Editpassword(token: authController.token!)),
+                    );
+
+                    if (result != null && result is String && mounted) {
+                      bool isSuccess = result.contains("Success");
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        notification(result, isSuccess);
+                      });
+                    }
+                  }, horizontalPadding: 20),
                 ],
               ),
 
