@@ -17,7 +17,8 @@ class UserController extends ChangeNotifier {
   int? Role;
   String? userEmail;
   int? cardId;
-
+  bool? isBlocked;
+  String? banReason;
 
 
 
@@ -45,6 +46,8 @@ class UserController extends ChangeNotifier {
         Role = data['RoleId'];
         userEmail = data['email'];
         cardId = data['cardId'];
+        isBlocked = data['isBlocked'];
+        banReason = data['blockedReason'];
 
 
        // debugPrint("User name loaded: $userName");

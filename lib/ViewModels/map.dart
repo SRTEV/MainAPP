@@ -15,6 +15,7 @@ import 'package:provider/provider.dart';
 import '../Controllers/Controller.dart';
 import '../Controllers/UserController.dart';
 import '../Controllers/ZoneController.dart';
+import 'Blocked.dart';
 import 'ContactSupport.dart';
 import 'Profile.dart';
 
@@ -85,16 +86,30 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
 
     _initLocation();
     _initCompass();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       final userController = Provider.of<UserController>(context, listen: false);
       final authController = Provider.of<AuthController>(context, listen: false);
-      context.read<Controller>().fetchVehicles();
-      context.read<Controller>().startVehiclePolling();
-      final Userid = authController.userId!;
-      final token = authController.token!;
 
-      if (authController.userId != null && authController.token != null) {
-        userController.fetchUserName(Userid, token);
+      final userid = authController.userId;
+      final token = authController.token;
+
+      if (userid != null && token != null) {
+        // Обов'язково чекаємо завершення запиту на сервер
+        await userController.fetchUserName(userid, token);
+
+        // Перевіряємо статус блокування після отримання відповіді
+        if (userController.isBlocked == true && mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const Blocked()),
+          );
+          return; // Зупиняємо подальше завантаження мапи
+        }
+      }
+      if (mounted) {
+        context.read<Controller>().fetchVehicles();
+        context.read<Controller>().startVehiclePolling();
       }
     });
   }
