@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_compass/flutter_compass.dart';
@@ -9,13 +10,16 @@ import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart' hide Path;
 import 'package:mainapp/Controllers/AuthController.dart';
 import 'package:mainapp/Controllers/RentalController.dart';
+import 'package:mainapp/Controllers/ScanController.dart';
 import 'package:provider/provider.dart';
+
 import '../Controllers/Controller.dart';
 import '../Controllers/UserController.dart';
 import '../Controllers/ZoneController.dart';
 import 'Blocked.dart';
 import 'ContactSupport.dart';
 import 'Profile.dart';
+import 'ScannerQr.dart';
 
 class MapPage extends StatefulWidget {
   const MapPage({super.key});
@@ -162,7 +166,46 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         FlutterCompass.events?.listen((e) => targetHeading = e.heading ?? 0.0);
   }
 
-  void _onItemTapped(int index, BuildContext context) {
+  Future<void> _onItemTapped(int index, BuildContext context) async {
+    if (index == 0) {
+      debugPrint('Challanges');
+    }
+    if (index == 1) {
+      debugPrint('History');
+    }
+    if (index == 2) {
+      final scannedCode = await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const ScannerQr()),
+      );
+
+      if (scannedCode != null) {
+        debugPrint("Scanned QR Code: $scannedCode");
+
+        final token = context
+            .read<AuthController>()
+            .token;
+        if (token != null) {
+          final matchedVehicle = await context
+              .read<ScanController>()
+              .scanVehicle(scannedCode, token);
+
+          if (matchedVehicle != null) {
+            await context.read<ZoneController>().fetchZones(
+                matchedVehicle.vehicleTypeId, token);
+            await context.read<RentalController>().fetchRentalPlans(
+                matchedVehicle.vehicleTypeId);
+            setState(() {
+              _selectedVehicle = matchedVehicle;
+            });
+          } else {
+            _showTopNotification(context, "Transport not found or deleted!");
+          }
+        }
+      }
+    }
+
+
     if (index == 3) {
       Navigator.push(
           context, MaterialPageRoute(builder: (context) => const Profile()));
@@ -214,8 +257,6 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                   urlTemplate:
                   'https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/{z}/{x}/{y}?access_token={accessToken}',
                   additionalOptions: {'accessToken': mapboxToken}),
-
-              // ШАР ДЛЯ ВІДОБРАЖЕННЯ ЗОН (Оскільки всі зони тепер заборонені, вони червоні)
               Consumer<ZoneController>(
                 builder: (context, zoneCtrl, child) {
                   return PolygonLayer(

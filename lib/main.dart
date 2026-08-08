@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:mainapp/Controllers/RentalController.dart';
-import 'package:mainapp/Controllers/ZoneController.dart';
+import 'package:mainapp/Controllers/ScanController.dart';
 import 'package:provider/provider.dart';
 
 import 'Controllers/AuthController.dart';
@@ -10,7 +10,6 @@ import 'Controllers/UserController.dart';
 import 'Controllers/ZoneController.dart';
 import 'ViewModels/ChangePasswordReset.dart';
 import 'ViewModels/Login.dart';
-import 'ViewModels/Register.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,6 +22,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => RentalController()),
         ChangeNotifierProvider(create: (_) => AuthController()),
         ChangeNotifierProvider(create: (_) => ZoneController()),
+        ChangeNotifierProvider(create: (_) => ScanController()),
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
