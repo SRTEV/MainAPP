@@ -16,7 +16,7 @@ class ZoneModel {
     required this.id,
     this.name,
     required this.coordinates,
-    required this.isRestrictedArea,
+    this.isRestrictedArea = true,
     this.vehicleTypeId,
   });
 
@@ -25,8 +25,6 @@ class ZoneModel {
       id: json['id'] ?? 0,
       name: json['name'],
       coordinates: json['coordinates'] ?? '',
-      isRestrictedArea:
-          json['is_Restricted_area'] ?? json['isRestrictedArea'] ?? false,
       vehicleTypeId: json['vehicle_TypeId'] ?? json['vehicleTypeId'],
     );
   }
@@ -70,7 +68,6 @@ class ZoneController extends ChangeNotifier {
     }
   }
 
-  // ДОДАНИЙ МЕТОД ДЛЯ ПЕРЕТВОРЕННЯ РЯДКА КООРДИНАТ У ТОЧКИ ПОЛІГОНУ
   List<LatLng> parseCoordinates(String coordsString) {
     List<LatLng> points = [];
     try {

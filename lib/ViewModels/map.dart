@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_compass/flutter_compass.dart';
@@ -11,7 +10,6 @@ import 'package:latlong2/latlong.dart' hide Path;
 import 'package:mainapp/Controllers/AuthController.dart';
 import 'package:mainapp/Controllers/RentalController.dart';
 import 'package:provider/provider.dart';
-
 import '../Controllers/Controller.dart';
 import '../Controllers/UserController.dart';
 import '../Controllers/ZoneController.dart';
@@ -95,16 +93,13 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       final token = authController.token;
 
       if (userid != null && token != null) {
-        // Обов'язково чекаємо завершення запиту на сервер
         await userController.fetchUserName(userid, token);
-
-        // Перевіряємо статус блокування після отримання відповіді
         if (userController.isBlocked == true && mounted) {
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (context) => const Blocked()),
           );
-          return; // Зупиняємо подальше завантаження мапи
+          return;
         }
       }
       if (mounted) {
@@ -220,17 +215,13 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                   'https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/{z}/{x}/{y}?access_token={accessToken}',
                   additionalOptions: {'accessToken': mapboxToken}),
 
-              // ШАР ДЛЯ ВІДОБРАЖЕННЯ ЗОН
+              // ШАР ДЛЯ ВІДОБРАЖЕННЯ ЗОН (Оскільки всі зони тепер заборонені, вони червоні)
               Consumer<ZoneController>(
                 builder: (context, zoneCtrl, child) {
                   return PolygonLayer(
                     polygons: zoneCtrl.zones.map((zone) {
-                      final isRestricted = zone.isRestrictedArea;
-                      final color = isRestricted
-                          ? Colors.red.withOpacity(0.3)
-                          : Colors.green.withOpacity(0.3);
-                      final borderColor =
-                      isRestricted ? Colors.red : Colors.green;
+                      final color = Colors.red.withOpacity(0.3);
+                      final borderColor = Colors.red;
 
                       return Polygon(
                         points: zoneCtrl.parseCoordinates(zone.coordinates),
@@ -378,7 +369,6 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
           ),
 
           // 3. Низ: Меню деталей транспортного засобу
-          // Використовуємо LayoutBuilder або відстежуємо висоту, щоб карта за межами меню була повністю «живою» для жестів
           if (_selectedVehicle != null)
             Positioned(
               bottom: 0,
@@ -386,8 +376,6 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
               right: 0,
               child: Stack(
                 children: [
-                  // Невидима підкладка на весь екран зверху меню, яка пропускає кліки на карту,
-                  // але дозволяє взаємодіяти виключно з самим блоком меню знизу
                   Positioned.fill(
                     child: GestureDetector(
                       behavior: HitTestBehavior.translucent,
@@ -400,7 +388,6 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
             ),
         ],
       ),
-      // Кнопка «Знайди мене» тепер плавно підстрибує вище і стабільно розташовується над меню транспорту
       floatingActionButton: AnimatedPadding(
         duration: const Duration(milliseconds: 200),
         padding: EdgeInsets.only(
