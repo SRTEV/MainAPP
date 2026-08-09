@@ -1,7 +1,8 @@
 import 'dart:convert';
+
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:http/http.dart' as http;
 
 class RentalPlan {
   final int id;
@@ -32,7 +33,7 @@ class RentalPlan {
 
 
 class RentalController extends ChangeNotifier {
-  final String _serverApi = dotenv.env['SERVER']!;
+  final String _serverApi = dotenv.env['SERVER'] ?? '10.0.2.2';
 
   List<RentalPlan> _plans = [];
   List<RentalPlan> get plans => _plans;
@@ -71,12 +72,47 @@ class RentalController extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
-
   }
-  void selectPlan(RentalPlan plan) {
+
+  Future<String?> startRental({
+    required int vehicleId,
+    required int planId,
+    required int userId,
+    required String token,
+  }) async {
+    try {
+      final url = Uri.parse('http://$_serverApi:5194/api/Rental/start');
+      final response = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          "vehicleId": vehicleId,
+          "rentalPlanId": planId,
+          "userId": userId,
+        }),
+      );
+
+      if (response.statusCode == 201) {
+        return null; // Успіх, помилки немає
+      } else {
+        final data = jsonDecode(response.body);
+        return data['message'] ?? "Failed to start rental.";
+      }
+    } catch (e) {
+      return "Connection error: $e";
+    }
+  }
+
+  void selectPlan(RentalPlan? plan) {
     _selectedPlan = plan;
     notifyListeners();
   }
 
-
+  void clearselectedPlan() {
+    _selectedPlan = null;
+    notifyListeners();
+  }
 }

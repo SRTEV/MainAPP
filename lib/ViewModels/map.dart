@@ -12,7 +12,6 @@ import 'package:mainapp/Controllers/AuthController.dart';
 import 'package:mainapp/Controllers/RentalController.dart';
 import 'package:mainapp/Controllers/ScanController.dart';
 import 'package:provider/provider.dart';
-
 import '../Controllers/Controller.dart';
 import '../Controllers/UserController.dart';
 import '../Controllers/ZoneController.dart';
@@ -40,6 +39,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   Timer? _resumeTimer;
 
   dynamic _selectedVehicle;
+  dynamic _startedRental;
 
   final MapController _mapController = MapController();
   StreamSubscription<Position>? _positionStream;
@@ -48,30 +48,71 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
 
-  void _showTopNotification(BuildContext context, String result) {
+  void _showTopNotification(BuildContext context, String message) {
     if (!mounted) return;
-    bool isSuccess = result.toLowerCase().contains("success");
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          result,
-          textAlign: TextAlign.center,
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
-        backgroundColor: isSuccess ? Colors.green.shade600 : Colors.red.shade600,
-        behavior: SnackBarBehavior.floating,
-        dismissDirection: DismissDirection.startToEnd,
-        margin: EdgeInsets.only(
-          bottom: MediaQuery
-              .of(context)
-              .size
-              .height - 250,
-          left: 20,
-          right: 20,
-        ),
-        duration: const Duration(seconds: 4),
+    bool isSuccess = message.toLowerCase().contains("success");
+
+    OverlayState overlayState = Overlay.of(context);
+    late OverlayEntry overlayEntry;
+
+    overlayEntry = OverlayEntry(
+      builder: (context) =>
+          Positioned(
+            top: MediaQuery
+                .of(context)
+                .padding
+                .top + 10,
+            left: 20,
+            right: 20,
+            child: Material(
+              color: Colors.transparent,
+              child: TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0.0, end: 1.0),
+                duration: const Duration(milliseconds: 300),
+                builder: (context, value, child) {
+                  return Transform.translate(
+                    offset: Offset(0, -20 * (1 - value)),
+                    child: Opacity(
+                      opacity: value,
+                      child: child,
+                    ),
+                  );
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: isSuccess ? Colors.green.shade600 : Colors.red
+                        .shade600,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.2),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Text(
+                    message,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              ),
+            ),
       ),
     );
+
+    overlayState.insert(overlayEntry);
+
+    Future.delayed(const Duration(seconds: 4), () {
+      overlayEntry.remove();
+    });
   }
 
   @override
@@ -92,7 +133,6 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final userController = Provider.of<UserController>(context, listen: false);
       final authController = Provider.of<AuthController>(context, listen: false);
-
       final userid = authController.userId;
       final token = authController.token;
 
@@ -195,8 +235,11 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                 matchedVehicle.vehicleTypeId, token);
             await context.read<RentalController>().fetchRentalPlans(
                 matchedVehicle.vehicleTypeId);
+
+            context.read<RentalController>().clearselectedPlan();
             setState(() {
-              _selectedVehicle = matchedVehicle;
+              _selectedVehicle = null;
+              _startedRental = matchedVehicle;
             });
           } else {
             _showTopNotification(context, "Transport not found or deleted!");
@@ -204,7 +247,6 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         }
       }
     }
-
 
     if (index == 3) {
       Navigator.push(
@@ -231,19 +273,17 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     return Scaffold(
       body: Stack(
         children: [
-          // 1. Карта повністю активна для жестів (зум/скрол)
           FlutterMap(
             mapController: _mapController,
             options: MapOptions(
               initialCenter: userLocation,
               initialZoom: 16.0,
               onTap: (tapPosition, point) {
-                if (_selectedVehicle != null) {
-                  setState(() {
-                    _selectedVehicle = null;
-                  });
-                  context.read<ZoneController>().clearZones();
-                }
+                setState(() {
+                  _selectedVehicle = null;
+                  _startedRental = null;
+                });
+                context.read<ZoneController>().clearZones();
               },
               onMapEvent: (event) {
                 if (event.source == MapEventSource.onDrag) {
@@ -275,7 +315,6 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                   );
                 },
               ),
-
               MarkerLayer(
                 markers: vehicles
                     .where((v) =>
@@ -304,6 +343,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                               .fetchRentalPlans(v.vehicleTypeId);
 
                           setState(() {
+                            _startedRental = null;
                             _selectedVehicle = v;
                           });
                         },
@@ -328,8 +368,6 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
               ]),
             ],
           ),
-
-          // 2. Фільтри зверху
           Positioned(
             top: 50,
             left: 20,
@@ -408,8 +446,6 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
               ],
             ),
           ),
-
-          // 3. Низ: Меню деталей транспортного засобу
           if (_selectedVehicle != null)
             Positioned(
               bottom: 0,
@@ -427,12 +463,31 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                 ],
               ),
             ),
+          if (_startedRental != null)
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.translucent,
+                      onTap: () {},
+                    ),
+                  ),
+                  _buildStartRentalWidget(context, _startedRental),
+                ],
+              ),
+            ),
         ],
       ),
       floatingActionButton: AnimatedPadding(
         duration: const Duration(milliseconds: 200),
         padding: EdgeInsets.only(
-          bottom: _selectedVehicle != null ? 310.0 : 10.0,
+          bottom: (_selectedVehicle != null || _startedRental != null)
+              ? 310.0
+              : 10.0,
         ),
         child: FloatingActionButton(
           backgroundColor: Colors.black,
@@ -689,6 +744,261 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                               fontStyle: FontStyle.italic,
                               color: Colors.grey,
                               fontSize: 12)),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildStartRentalWidget(BuildContext context, dynamic vehicle) {
+    final BuildContext scaffoldContext = context;
+
+    IconData getBatteryIcon(int level) {
+      if (level >= 80) return Icons.battery_full;
+      if (level >= 60) return Icons.battery_6_bar;
+      if (level >= 40) return Icons.battery_4_bar;
+      if (level >= 20) return Icons.battery_2_bar;
+      return Icons.battery_0_bar;
+    }
+
+    return Consumer<RentalController>(
+      builder: (context, rentalCtrl, child) {
+        return Consumer<Controller>(
+          builder: (context, vehicleController, child) {
+            return Align(
+              alignment: Alignment.bottomCenter,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 10, vertical: 5),
+                decoration: const BoxDecoration(color: Colors.black),
+                child: Container(
+                  padding: const EdgeInsets.all(15),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFD9D9D9),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          Text("${vehicle.type} ${vehicle.model}",
+                              style: const TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  fontStyle: FontStyle.italic)),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: Container(
+                              width: 26,
+                              height: 26,
+                              decoration: BoxDecoration(
+                                  color: Colors.black,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                      color: Colors.red, width: 2)),
+                              child: IconButton(
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(),
+                                  iconSize: 14,
+                                  icon: const Icon(Icons.question_mark,
+                                      color: Colors.white),
+                                  onPressed: () async {
+                                    setState(() {
+                                      _startedRental = null;
+                                    });
+                                    context.read<ZoneController>().clearZones();
+
+                                    final result = await Navigator.push(
+                                      scaffoldContext,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            Contactsupport(
+                                              vehicleId: vehicle.id,
+                                              email: Provider
+                                                  .of<UserController>(
+                                                  scaffoldContext,
+                                                  listen: false)
+                                                  .userEmail,
+                                            ),
+                                      ),
+                                    );
+                                    if (result != null && result is String) {
+                                      _showTopNotification(
+                                          scaffoldContext, result);
+                                    }
+                                  }),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      const Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text("Choose your plan:",
+                            style: TextStyle(
+                                fontStyle: FontStyle.italic,
+                                color: Colors.grey,
+                                fontSize: 13)),
+                      ),
+                      Container(
+                        height: 85,
+                        margin: const EdgeInsets.symmetric(vertical: 10),
+                        child: rentalCtrl.isLoading
+                            ? const Center(
+                            child: CircularProgressIndicator(
+                                color: Colors.black))
+                            : rentalCtrl.plans.isEmpty
+                            ? const Center(
+                            child: Text("No plans available"))
+                            : ListView.builder(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: rentalCtrl.plans.length,
+                          itemBuilder: (context, index) {
+                            final plan = rentalCtrl.plans[index];
+                            final isSelected =
+                                rentalCtrl.selectedPlan?.id == plan.id;
+
+                            return GestureDetector(
+                              onTap: () => rentalCtrl.selectPlan(plan),
+                              child: Container(
+                                width: 90,
+                                margin: const EdgeInsets.symmetric(
+                                    horizontal: 5),
+                                decoration: BoxDecoration(
+                                  color: isSelected
+                                      ? Colors.white
+                                      : const Color(0xFFE6FF94),
+                                  border:
+                                  Border.all(color: Colors.black),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Column(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          vertical: 4),
+                                      width: double.infinity,
+                                      decoration: const BoxDecoration(
+                                          border: Border(
+                                              bottom: BorderSide(
+                                                  color: Colors.black))),
+                                      child: Center(
+                                          child: Text(plan.planName,
+                                              style: const TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 12))),
+                                    ),
+                                    Padding(
+                                      padding: const EdgeInsets.all(4.0),
+                                      child: Text(
+                                          "${plan.price.toStringAsFixed(
+                                              1)} Zł\n/${plan.time} min",
+                                          textAlign: TextAlign.center,
+                                          style: const TextStyle(
+                                              fontSize: 11)),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(getBatteryIcon(vehicle.batteryLevel),
+                                      size: 38),
+                                  const SizedBox(width: 4),
+                                  Text("${vehicle.batteryLevel}%",
+                                      style: const TextStyle(
+                                          fontSize: 26,
+                                          fontWeight: FontWeight.bold)),
+                                ],
+                              ),
+                              Text(
+                                  "Battery life ${vehicleController
+                                      .calculateRange(vehicle).toStringAsFixed(
+                                      0)} KM",
+                                  style: const TextStyle(fontSize: 14)),
+                            ],
+                          ),
+                          SizedBox(
+                            width: 120,
+                            height: 48,
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.black,
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              onPressed: () async {
+                                if (rentalCtrl.selectedPlan == null) {
+                                  _showTopNotification(
+                                      context, "Please select a rental plan!");
+                                  return;
+                                }
+
+                                final authController = context.read<
+                                    AuthController>();
+                                final token = authController.token;
+                                final userId = authController.userId;
+
+                                if (token == null || userId == null) {
+                                  _showTopNotification(
+                                      context, "Authorization error!");
+                                  return;
+                                }
+
+                                // Викликаємо метод через екземпляр контролера з провайдера
+                                String? errorMessage = await context.read<
+                                    RentalController>().startRental(
+                                  vehicleId: vehicle.id,
+                                  planId: rentalCtrl.selectedPlan!.id,
+                                  userId: userId,
+                                  token: token,
+                                );
+
+                                if (errorMessage == null) {
+                                  setState(() {
+                                    _selectedVehicle = null;
+                                  });
+                                  context.read<ZoneController>().clearZones();
+                                  context.read<Controller>().fetchVehicles();
+                                  _showTopNotification(
+                                      context, "Rental started successfully!");
+                                } else {
+                                  _showTopNotification(context,
+                                      errorMessage); // Виведеться текст помилки з бекенда
+                                }
+                              },
+                              child: const Text(
+                                "Start",
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ],
                   ),
                 ),
