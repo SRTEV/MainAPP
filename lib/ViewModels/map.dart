@@ -12,6 +12,7 @@ import 'package:mainapp/Controllers/AuthController.dart';
 import 'package:mainapp/Controllers/RentalController.dart';
 import 'package:mainapp/Controllers/ScanController.dart';
 import 'package:provider/provider.dart';
+
 import '../Controllers/Controller.dart';
 import '../Controllers/UserController.dart';
 import '../Controllers/ZoneController.dart';
@@ -27,7 +28,7 @@ class MapPage extends StatefulWidget {
 }
 
 class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
-  final String mapboxToken = dotenv.env['TOKEN_MAP'] !;
+  final String mapboxToken = dotenv.env['TOKEN_MAP']!;
   LatLng userLocation = const LatLng(51.23547305664311, 22.548898519702192);
   LatLng targetLocation = const LatLng(51.23547305664311, 22.548898519702192);
   double userHeading = 0.0;
@@ -37,9 +38,14 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   Set<String> _visibleTypes = {};
   bool _isInitialized = false;
   Timer? _resumeTimer;
+  Timer? _timerRent;
+  Duration _timerRentDuration = Duration.zero;
 
+  double _totalDistance = 0.0;
+  LatLng? _lastPosition;
   dynamic _selectedVehicle;
   dynamic _startedRental;
+  dynamic _activeRental;
 
   final MapController _mapController = MapController();
   StreamSubscription<Position>? _positionStream;
@@ -47,6 +53,14 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   late Ticker _ticker;
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
+
+  IconData _getBatteryIcon(int level) {
+    if (level >= 80) return Icons.battery_full;
+    if (level >= 60) return Icons.battery_6_bar;
+    if (level >= 40) return Icons.battery_4_bar;
+    if (level >= 20) return Icons.battery_2_bar;
+    return Icons.battery_0_bar;
+  }
 
   void _showTopNotification(BuildContext context, String message) {
     if (!mounted) return;
@@ -153,6 +167,22 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     });
   }
 
+  void _startRentalTimer() {
+    _timerRentDuration = Duration.zero;
+    _timerRent?.cancel();
+
+    _timerRent = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      setState(() {
+        _timerRentDuration =
+            Duration(seconds: _timerRentDuration.inSeconds + 1);
+      });
+    });
+  }
+
   void _ensureFiltersInitialized(List<dynamic> vehicles) {
     if (!_isInitialized && vehicles.isNotEmpty) {
       setState(() {
@@ -160,6 +190,17 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         _isInitialized = true;
       });
     }
+  }
+
+  String _formatDuration(Duration duration) {
+    String twoDigits(int n) => n.toString().padLeft(2, '0');
+    final minutes = twoDigits(duration.inMinutes.remainder(60));
+    final seconds = twoDigits(duration.inSeconds.remainder(60));
+    if (duration.inHours > 0) {
+      final hours = twoDigits(duration.inHours);
+      return "$hours:$minutes:$seconds";
+    }
+    return "$minutes:$seconds";
   }
 
   void _updateSmoothElements() {
@@ -188,22 +229,76 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   }
 
   Future<void> _initLocation() async {
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    // 1. Перевіряємо, чи увімкнені служби геолокації на пристрої
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      // Служби геолокації вимкнені, можна показати попередження користувачеві
+      return;
+    }
+
+    // 2. Перевіряємо поточний статус дозволу
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        // Користувач відмовив у дозволі
+        return;
+      }
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      // Дозвіл заблоковано назавжди
+      return;
+    }
+
+    // 3. Якщо дозволи є, отримуємо позицію
     Position position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.bestForNavigation);
+    if (!mounted) return;
+
     setState(() {
       userLocation = LatLng(position.latitude, position.longitude);
       targetLocation = userLocation;
+      // Оновлюємо також _lastPosition, щоб розрахунок дистанції працював правильно
+      _lastPosition = userLocation;
     });
+
     _positionStream = Geolocator.getPositionStream(
         locationSettings: const LocationSettings(
-            accuracy: LocationAccuracy.bestForNavigation, distanceFilter: 0)
-    ).listen((p) =>
-        setState(() => targetLocation = LatLng(p.latitude, p.longitude)));
+            accuracy: LocationAccuracy.bestForNavigation, distanceFilter: 2)
+    ).listen((p) {
+      if (mounted) {
+        final newLatLng = LatLng(p.latitude, p.longitude);
+        if (_activeRental != null && _lastPosition != null) {
+          double distanceInMeters = Geolocator.distanceBetween(
+            _lastPosition!.latitude,
+            _lastPosition!.longitude,
+            newLatLng.latitude,
+            newLatLng.longitude,
+          );
+          if (distanceInMeters > 1.0) {
+            _totalDistance += distanceInMeters / 1000.0;
+            _lastPosition = newLatLng;
+          }
+        }
+
+        setState(() {
+          targetLocation = newLatLng;
+        });
+      }
+    });
   }
 
   void _initCompass() {
     _compassStream =
-        FlutterCompass.events?.listen((e) => targetHeading = e.heading ?? 0.0);
+        FlutterCompass.events?.listen((e) {
+          if (mounted) {
+            targetHeading = e.heading ?? 0.0;
+          }
+        });
   }
 
   Future<void> _onItemTapped(int index, BuildContext context) async {
@@ -219,9 +314,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         MaterialPageRoute(builder: (context) => const ScannerQr()),
       );
 
-      if (scannedCode != null) {
-        debugPrint("Scanned QR Code: $scannedCode");
-
+      if (scannedCode != null && mounted) {
         final token = context
             .read<AuthController>()
             .token;
@@ -230,7 +323,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
               .read<ScanController>()
               .scanVehicle(scannedCode, token);
 
-          if (matchedVehicle != null) {
+          if (matchedVehicle != null && mounted) {
             await context.read<ZoneController>().fetchZones(
                 matchedVehicle.vehicleTypeId, token);
             await context.read<RentalController>().fetchRentalPlans(
@@ -241,7 +334,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
               _selectedVehicle = null;
               _startedRental = matchedVehicle;
             });
-          } else {
+          } else if (mounted) {
             _showTopNotification(context, "Transport not found or deleted!");
           }
         }
@@ -259,6 +352,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     _positionStream?.cancel();
     _compassStream?.cancel();
     _resumeTimer?.cancel();
+    _timerRent?.cancel();
     _ticker.dispose();
     _pulseController.dispose();
     super.dispose();
@@ -270,6 +364,24 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     final vehicles = controller.vehicles;
     _ensureFiltersInitialized(vehicles);
 
+    // Оновлюємо дані активного чи обраного транспорту в реальному часі з живого списку контролера
+    if (_activeRental != null) {
+      try {
+        _activeRental = vehicles.firstWhere((v) => v.id == _activeRental.id);
+      } catch (_) {}
+    }
+    if (_selectedVehicle != null) {
+      try {
+        _selectedVehicle =
+            vehicles.firstWhere((v) => v.id == _selectedVehicle.id);
+      } catch (_) {}
+    }
+    if (_startedRental != null) {
+      try {
+        _startedRental = vehicles.firstWhere((v) => v.id == _startedRental.id);
+      } catch (_) {}
+    }
+
     return Scaffold(
       body: Stack(
         children: [
@@ -279,6 +391,9 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
               initialCenter: userLocation,
               initialZoom: 16.0,
               onTap: (tapPosition, point) {
+                if (_activeRental != null) {
+                  return;
+                }
                 setState(() {
                   _selectedVehicle = null;
                   _startedRental = null;
@@ -342,10 +457,12 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                               .read<RentalController>()
                               .fetchRentalPlans(v.vehicleTypeId);
 
-                          setState(() {
-                            _startedRental = null;
-                            _selectedVehicle = v;
-                          });
+                          if (mounted) {
+                            setState(() {
+                              _startedRental = null;
+                              _selectedVehicle = v;
+                            });
+                          }
                         },
                         child: Center(
                             child: Image.asset(
@@ -480,12 +597,30 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                 ],
               ),
             ),
+          if (_activeRental != null)
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.translucent,
+                      onTap: () {},
+                    ),
+                  ),
+                  _buildVehicleRentActiveWidget(context, _activeRental),
+                ],
+              ),
+            ),
         ],
       ),
       floatingActionButton: AnimatedPadding(
         duration: const Duration(milliseconds: 200),
         padding: EdgeInsets.only(
-          bottom: (_selectedVehicle != null || _startedRental != null)
+          bottom: (_selectedVehicle != null || _startedRental != null ||
+              _activeRental != null)
               ? 310.0
               : 10.0,
         ),
@@ -574,16 +709,208 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     }
   }
 
-  Widget _buildVehicleDetailsWidget(BuildContext context, dynamic vehicle) {
+  Widget _buildVehicleRentActiveWidget(BuildContext context, dynamic vehicle) {
     final BuildContext scaffoldContext = context;
 
-    IconData getBatteryIcon(int level) {
-      if (level >= 80) return Icons.battery_full;
-      if (level >= 60) return Icons.battery_6_bar;
-      if (level >= 40) return Icons.battery_4_bar;
-      if (level >= 20) return Icons.battery_2_bar;
-      return Icons.battery_0_bar;
-    }
+    return Consumer<Controller>(
+      builder: (context, vehicleController, child) {
+        return Align(
+          alignment: Alignment.bottomCenter,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: const BoxDecoration(color: Colors.black),
+            child: Container(
+              padding: const EdgeInsets.all(15),
+              decoration: BoxDecoration(
+                color: const Color(0xFFD9D9D9),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Text(
+                        "${vehicle.type} ${vehicle.model ?? vehicle.id}",
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: Container(
+                          width: 26,
+                          height: 26,
+                          decoration: BoxDecoration(
+                            color: Colors.black,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.red, width: 2),
+                          ),
+                          child: IconButton(
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            iconSize: 14,
+                            icon: const Icon(
+                                Icons.question_mark, color: Colors.white),
+                            onPressed: () async {
+                              final result = await Navigator.push(
+                                scaffoldContext,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      Contactsupport(
+                                        vehicleId: vehicle.id,
+                                        email: Provider
+                                            .of<UserController>(
+                                            scaffoldContext, listen: false)
+                                            .userEmail,
+                                      ),
+                                ),
+                              );
+                              if (result != null && result is String) {
+                                _showTopNotification(scaffoldContext, result);
+                              }
+                            },
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(_getBatteryIcon(vehicle.batteryLevel),
+                                  size: 40),
+                              const SizedBox(width: 8),
+                              Text(
+                                "${vehicle.batteryLevel}%",
+                                style: const TextStyle(
+                                    fontSize: 32, fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            "Battery life ${vehicleController.calculateRange(
+                                vehicle).toStringAsFixed(0)} KM",
+                            style: const TextStyle(
+                                fontSize: 16, color: Colors.black54),
+                          ),
+                        ],
+                      ),
+                      Container(
+                        width: 65,
+                        height: 65,
+                        decoration: const BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Image.asset(
+                            getIconForVehicleType(vehicle.type),
+                            fit: BoxFit.contain,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  const Text(
+                    "Travel time",
+                    style: TextStyle(fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.black54),
+                  ),
+                  Text(
+                    _formatDuration(_timerRentDuration),
+                    style: const TextStyle(fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black),
+                  ),
+                  const SizedBox(height: 15),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: Colors.black,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                        elevation: 0,
+                      ),
+                      onPressed: () async {
+                        final token = context
+                            .read<AuthController>()
+                            .token;
+
+                        if (token == null) {
+                          _showTopNotification(
+                              scaffoldContext, "Authorization error!");
+                          return;
+                        }
+
+                        final rentalId = context
+                            .read<RentalController>()
+                            .RentalId;
+
+                        if (rentalId == null) {
+                          _showTopNotification(
+                              scaffoldContext, "Active rental ID not found!");
+                          return;
+                        }
+
+                        String? errorMessage = await context.read<
+                            RentalController>().endRental(
+                          rentalId: rentalId,
+                          distance: _totalDistance,
+                          token: token,
+                        );
+
+                        if (errorMessage == null) {
+                          if (mounted) {
+                            setState(() {
+                              _activeRental = null;
+                            });
+                          }
+
+                          context.read<Controller>().fetchVehicles();
+                          context.read<ZoneController>().clearZones();
+
+                          _showTopNotification(
+                              scaffoldContext, "Trip ended successfully!");
+                        } else {
+                          _showTopNotification(scaffoldContext, errorMessage);
+                        }
+                      },
+                      child: const Text(
+                        "End the trip",
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight
+                            .bold),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildVehicleDetailsWidget(BuildContext context, dynamic vehicle) {
+    final BuildContext scaffoldContext = context;
 
     return Consumer<RentalController>(
       builder: (context, rentalCtrl, child) {
@@ -657,7 +984,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                       ),
                       const SizedBox(height: 10),
                       Row(children: [
-                        Icon(getBatteryIcon(vehicle.batteryLevel), size: 45),
+                        Icon(_getBatteryIcon(vehicle.batteryLevel), size: 45),
                         Text("${vehicle.batteryLevel}%",
                             style: const TextStyle(
                                 fontSize: 32, fontWeight: FontWeight.bold)),
@@ -757,14 +1084,6 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
 
   Widget _buildStartRentalWidget(BuildContext context, dynamic vehicle) {
     final BuildContext scaffoldContext = context;
-
-    IconData getBatteryIcon(int level) {
-      if (level >= 80) return Icons.battery_full;
-      if (level >= 60) return Icons.battery_6_bar;
-      if (level >= 40) return Icons.battery_4_bar;
-      if (level >= 20) return Icons.battery_2_bar;
-      return Icons.battery_0_bar;
-    }
 
     return Consumer<RentalController>(
       builder: (context, rentalCtrl, child) {
@@ -921,7 +1240,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                             children: [
                               Row(
                                 children: [
-                                  Icon(getBatteryIcon(vehicle.batteryLevel),
+                                  Icon(_getBatteryIcon(vehicle.batteryLevel),
                                       size: 38),
                                   const SizedBox(width: 4),
                                   Text("${vehicle.batteryLevel}%",
@@ -966,7 +1285,6 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                                   return;
                                 }
 
-                                // Викликаємо метод через екземпляр контролера з провайдера
                                 String? errorMessage = await context.read<
                                     RentalController>().startRental(
                                   vehicleId: vehicle.id,
@@ -976,16 +1294,19 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                                 );
 
                                 if (errorMessage == null) {
-                                  setState(() {
-                                    _selectedVehicle = null;
-                                  });
-                                  context.read<ZoneController>().clearZones();
+                                  if (mounted) {
+                                    setState(() {
+                                      _startRentalTimer();
+                                      _startedRental = null;
+                                      _activeRental = vehicle;
+                                    });
+                                  }
                                   context.read<Controller>().fetchVehicles();
                                   _showTopNotification(
                                       context, "Rental started successfully!");
                                 } else {
                                   _showTopNotification(context,
-                                      errorMessage); // Виведеться текст помилки з бекенда
+                                      errorMessage);
                                 }
                               },
                               child: const Text(

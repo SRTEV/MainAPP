@@ -10,7 +10,7 @@ class RentalPlan {
   final double price;
   final int time;
   final int vehicleTypeId;
-
+  final int RentalId;
 
   RentalPlan({
     required this.id,
@@ -18,6 +18,7 @@ class RentalPlan {
     required this.price,
     required this.time,
     required this.vehicleTypeId,
+    required this.RentalId,
   });
 
   factory RentalPlan.fromJson(Map<String, dynamic> json) {
@@ -27,10 +28,10 @@ class RentalPlan {
       price: (json['price'] ?? json['Price'] ?? 0.0).toDouble(),
       time: json['time'] ?? json['Time'] ?? 0,
       vehicleTypeId: json['vehicleTypeId'] ?? json['Vehicle_TypeID'] ?? 0,
+      RentalId: json['id'] ?? 0,
     );
   }
 }
-
 
 class RentalController extends ChangeNotifier {
   final String _serverApi = dotenv.env['SERVER'] ?? '10.0.2.2';
@@ -41,6 +42,9 @@ class RentalController extends ChangeNotifier {
   RentalPlan? get selectedPlan => _selectedPlan;
   bool _isLoading = false;
   bool get isLoading => _isLoading;
+  int? _RentalId;
+
+  int? get RentalId => _RentalId;
 
   Future<void> fetchRentalPlans(int vehicleTypeId) async {
     _isLoading = true;
@@ -95,11 +99,45 @@ class RentalController extends ChangeNotifier {
         }),
       );
 
-      if (response.statusCode == 201) {
-        return null; // Успіх, помилки немає
-      } else {
+      if (response.statusCode == 201) { {
+        final data = jsonDecode(response.body);
+        _RentalId = data['id'];
+        notifyListeners();
+        return null} else {
         final data = jsonDecode(response.body);
         return data['message'] ?? "Failed to start rental.";
+      }
+    } catch (e) {
+      return "Connection error: $e";
+    }
+  }
+
+  Future<String?> endRental({
+    required int rentalId,
+    required double distance,
+    required String token,
+  }) async {
+    try {
+      final url = Uri.parse('http://$_serverApi:5194/api/Rental/end');
+      final response = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          "rentalId": rentalId,
+          "distance": distance,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        _RentalId = null;
+        notifyListeners();
+        return null;
+      } else {
+        final data = jsonDecode(response.body);
+        return data['message'] ?? "Failed to end rental.";
       }
     } catch (e) {
       return "Connection error: $e";
