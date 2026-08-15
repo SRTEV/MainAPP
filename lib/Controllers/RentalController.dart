@@ -34,7 +34,7 @@ class RentalPlan {
 }
 
 class RentalController extends ChangeNotifier {
-  final String _serverApi = dotenv.env['SERVER'] ?? '10.0.2.2';
+  final String serverApi = dotenv.env['SERVER'] ?? '10.0.2.2';
 
   List<RentalPlan> _plans = [];
   List<RentalPlan> get plans => _plans;
@@ -51,7 +51,8 @@ class RentalController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final url = Uri.parse('http://$_serverApi:5194/api/RentalPlan/VehicleType/$vehicleTypeId');
+      final url = Uri.parse(
+          'http://$serverApi:5194/api/RentalPlan/VehicleType/$vehicleTypeId');
       final response = await http.get(url);
 
       if (response.statusCode == 200) {
@@ -85,7 +86,7 @@ class RentalController extends ChangeNotifier {
     required String token,
   }) async {
     try {
-      final url = Uri.parse('http://$_serverApi:5194/api/Rental/start');
+      final url = Uri.parse('http://$serverApi:5194/api/Rental/start');
       final response = await http.post(
         url,
         headers: {
@@ -99,11 +100,12 @@ class RentalController extends ChangeNotifier {
         }),
       );
 
-      if (response.statusCode == 201) { {
+      if (response.statusCode == 201) {
         final data = jsonDecode(response.body);
         _RentalId = data['id'];
         notifyListeners();
-        return null} else {
+        return null;
+      } else {
         final data = jsonDecode(response.body);
         return data['message'] ?? "Failed to start rental.";
       }
@@ -115,10 +117,12 @@ class RentalController extends ChangeNotifier {
   Future<String?> endRental({
     required int rentalId,
     required double distance,
+    required double positionX,
+    required double positionY,
     required String token,
   }) async {
     try {
-      final url = Uri.parse('http://$_serverApi:5194/api/Rental/end');
+      final url = Uri.parse('http://$serverApi:5194/api/Rental/end');
       final response = await http.post(
         url,
         headers: {
@@ -128,6 +132,8 @@ class RentalController extends ChangeNotifier {
         body: jsonEncode({
           "rentalId": rentalId,
           "distance": distance,
+          "positionX": positionX, // Передаємо на сервер
+          "positionY": positionY, // Передаємо на сервер
         }),
       );
 
@@ -141,6 +147,34 @@ class RentalController extends ChangeNotifier {
       }
     } catch (e) {
       return "Connection error: $e";
+    }
+  }
+
+  Future<List<dynamic>> FetchRentalHistory(int userId, String token) async {
+    final url = Uri.parse('http://$serverApi:5194/api/Rental/History/$userId');
+
+    try {
+      final response = await http.get(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        List<dynamic> rentals = jsonDecode(response.body);
+        return rentals;
+      } else if (response.statusCode == 404) {
+        print('No rental history found for this user.');
+        return [];
+      } else {
+        throw Exception('Failed to load rental history. Status code: ${response
+            .statusCode}');
+      }
+    } catch (e) {
+      print('Error occurred: $e');
+      rethrow;
     }
   }
 

@@ -18,6 +18,7 @@ import '../Controllers/UserController.dart';
 import '../Controllers/ZoneController.dart';
 import 'Blocked.dart';
 import 'ContactSupport.dart';
+import 'History.dart';
 import 'Profile.dart';
 import 'ScannerQr.dart';
 
@@ -203,22 +204,34 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     return "$minutes:$seconds";
   }
 
+  /// Плавний рух позиції маркера та камери за користувачем під час переміщення
   void _updateSmoothElements() {
-    const double lerpFactor = 0.08;
-    userLocation = LatLng(
-      userLocation.latitude +
-          (targetLocation.latitude - userLocation.latitude) * lerpFactor,
-      userLocation.longitude +
-          (targetLocation.longitude - userLocation.longitude) * lerpFactor,
-    );
-    if (Fallow) _mapController.move(userLocation, _mapController.camera.zoom);
+    const double lerpFactor = 0.1;
+
+    double latDiff = targetLocation.latitude - userLocation.latitude;
+    double lngDiff = targetLocation.longitude - userLocation.longitude;
+
+    if (latDiff.abs() > 0.000001 || lngDiff.abs() > 0.000001) {
+      userLocation = LatLng(
+        userLocation.latitude + latDiff * lerpFactor,
+        userLocation.longitude + lngDiff * lerpFactor,
+      );
+
+      // Плавний рух камери за користувачем під час руху, якщо увімкнено Fallow
+      if (Fallow) {
+        _mapController.move(userLocation, _mapController.camera.zoom);
+      }
+      if (mounted) setState(() {});
+    }
 
     const double rotationLerp = 0.15;
     double diff = targetHeading - userHeading;
     if (diff > 180) diff -= 360;
     if (diff < -180) diff += 360;
-    userHeading += diff * rotationLerp;
-    if (mounted) setState(() {});
+    if (diff.abs() > 0.5) {
+      userHeading += diff * rotationLerp;
+      if (mounted) setState(() {});
+    }
   }
 
   void _startResumeTimer() {
@@ -232,57 +245,60 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     bool serviceEnabled;
     LocationPermission permission;
 
-    // 1. Перевіряємо, чи увімкнені служби геолокації на пристрої
     serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      // Служби геолокації вимкнені, можна показати попередження користувачеві
-      return;
-    }
+    if (!serviceEnabled) return;
 
-    // 2. Перевіряємо поточний статус дозволу
     permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) {
-        // Користувач відмовив у дозволі
-        return;
-      }
+      if (permission == LocationPermission.denied) return;
     }
 
-    if (permission == LocationPermission.deniedForever) {
-      // Дозвіл заблоковано назавжди
-      return;
-    }
+    if (permission == LocationPermission.deniedForever) return;
 
-    // 3. Якщо дозволи є, отримуємо позицію
+    // Отримуємо первинну позицію і робимо різкий телепорт на старті
     Position position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.bestForNavigation);
     if (!mounted) return;
 
+    final initialLatLng = LatLng(position.latitude, position.longitude);
+
     setState(() {
-      userLocation = LatLng(position.latitude, position.longitude);
-      targetLocation = userLocation;
-      // Оновлюємо також _lastPosition, щоб розрахунок дистанції працював правильно
-      _lastPosition = userLocation;
+      userLocation = initialLatLng;
+      targetLocation = initialLatLng;
+      _lastPosition = initialLatLng;
     });
 
+    // Одноразовий телепорт камери на старті
+    _mapController.move(initialLatLng, 16.0);
+
+    // Стрім оновлення координат у реальному часі для руху та слідування
     _positionStream = Geolocator.getPositionStream(
         locationSettings: const LocationSettings(
-            accuracy: LocationAccuracy.bestForNavigation, distanceFilter: 2)
+            accuracy: LocationAccuracy.bestForNavigation, distanceFilter: 1)
     ).listen((p) {
       if (mounted) {
         final newLatLng = LatLng(p.latitude, p.longitude);
-        if (_activeRental != null && _lastPosition != null) {
+
+        if (_lastPosition != null) {
           double distanceInMeters = Geolocator.distanceBetween(
             _lastPosition!.latitude,
             _lastPosition!.longitude,
             newLatLng.latitude,
             newLatLng.longitude,
           );
-          if (distanceInMeters > 1.0) {
-            _totalDistance += distanceInMeters / 1000.0;
-            _lastPosition = newLatLng;
+
+          // Ігноруємо мікроколивання GPS на місці (якщо зміна менше ніж 0.5 метра)
+          if (distanceInMeters < 0.5) {
+            return;
           }
+
+          if (_activeRental != null) {
+            if (distanceInMeters > 1.0) {
+              _totalDistance += distanceInMeters / 1000.0;
+            }
+          }
+          _lastPosition = newLatLng;
         }
 
         setState(() {
@@ -293,12 +309,11 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   }
 
   void _initCompass() {
-    _compassStream =
-        FlutterCompass.events?.listen((e) {
-          if (mounted) {
-            targetHeading = e.heading ?? 0.0;
-          }
-        });
+    _compassStream = FlutterCompass.events?.listen((e) {
+      if (mounted && e.heading != null) {
+        targetHeading = e.heading!;
+      }
+    });
   }
 
   Future<void> _onItemTapped(int index, BuildContext context) async {
@@ -306,7 +321,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       debugPrint('Challanges');
     }
     if (index == 1) {
-      debugPrint('History');
+      Navigator.push(
+          context, MaterialPageRoute(builder: (context) => const History()));
     }
     if (index == 2) {
       final scannedCode = await Navigator.push(
@@ -364,7 +380,6 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     final vehicles = controller.vehicles;
     _ensureFiltersInitialized(vehicles);
 
-    // Оновлюємо дані активного чи обраного транспорту в реальному часі з живого списку контролера
     if (_activeRental != null) {
       try {
         _activeRental = vehicles.firstWhere((v) => v.id == _activeRental.id);
@@ -391,9 +406,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
               initialCenter: userLocation,
               initialZoom: 16.0,
               onTap: (tapPosition, point) {
-                if (_activeRental != null) {
-                  return;
-                }
+                if (_activeRental != null) return;
                 setState(() {
                   _selectedVehicle = null;
                   _startedRental = null;
@@ -521,8 +534,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                             Theme(
                               data: Theme.of(context).copyWith(
                                 checkboxTheme: CheckboxThemeData(
-                                  fillColor:
-                                  WidgetStateProperty.resolveWith(
+                                  fillColor: WidgetStateProperty.resolveWith(
                                           (states) =>
                                       states.contains(
                                           WidgetState.selected)
@@ -568,65 +580,43 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
               bottom: 0,
               left: 0,
               right: 0,
-              child: Stack(
-                children: [
-                  Positioned.fill(
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.translucent,
-                      onTap: () {},
-                    ),
-                  ),
-                  _buildVehicleDetailsWidget(context, _selectedVehicle),
-                ],
-              ),
+              child: _buildVehicleDetailsWidget(context, _selectedVehicle),
             ),
           if (_startedRental != null)
             Positioned(
               bottom: 0,
               left: 0,
               right: 0,
-              child: Stack(
-                children: [
-                  Positioned.fill(
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.translucent,
-                      onTap: () {},
-                    ),
-                  ),
-                  _buildStartRentalWidget(context, _startedRental),
-                ],
-              ),
+              child: _buildStartRentalWidget(context, _startedRental),
             ),
           if (_activeRental != null)
             Positioned(
               bottom: 0,
               left: 0,
               right: 0,
-              child: Stack(
-                children: [
-                  Positioned.fill(
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.translucent,
-                      onTap: () {},
-                    ),
-                  ),
-                  _buildVehicleRentActiveWidget(context, _activeRental),
-                ],
-              ),
+              child: _buildVehicleRentActiveWidget(context, _activeRental),
             ),
         ],
       ),
       floatingActionButton: AnimatedPadding(
         duration: const Duration(milliseconds: 200),
         padding: EdgeInsets.only(
-          bottom: (_selectedVehicle != null || _startedRental != null ||
+          bottom: (_selectedVehicle != null ||
+              _startedRental != null ||
               _activeRental != null)
               ? 310.0
               : 10.0,
         ),
         child: FloatingActionButton(
           backgroundColor: Colors.black,
-          onPressed: () => setState(() => Fallow = true),
+          onPressed: () {
+            setState(() {
+              Fallow = true;
+              targetLocation = userLocation;
+            });
+            // Примусовий миттєвий телепорт при натисканні на кнопку геолокації
+            _mapController.move(userLocation, _mapController.camera.zoom);
+          },
           child: const Icon(Icons.my_location, color: Colors.white),
         ),
       ),
@@ -753,8 +743,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                             padding: EdgeInsets.zero,
                             constraints: const BoxConstraints(),
                             iconSize: 14,
-                            icon: const Icon(
-                                Icons.question_mark, color: Colors.white),
+                            icon: const Icon(Icons.question_mark,
+                                color: Colors.white),
                             onPressed: () async {
                               final result = await Navigator.push(
                                 scaffoldContext,
@@ -764,7 +754,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                                         vehicleId: vehicle.id,
                                         email: Provider
                                             .of<UserController>(
-                                            scaffoldContext, listen: false)
+                                            scaffoldContext,
+                                            listen: false)
                                             .userEmail,
                                       ),
                                 ),
@@ -826,13 +817,15 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                   const SizedBox(height: 20),
                   const Text(
                     "Travel time",
-                    style: TextStyle(fontSize: 14,
+                    style: TextStyle(
+                        fontSize: 14,
                         fontWeight: FontWeight.w500,
                         color: Colors.black54),
                   ),
                   Text(
                     _formatDuration(_timerRentDuration),
-                    style: const TextStyle(fontSize: 28,
+                    style: const TextStyle(
+                        fontSize: 28,
                         fontWeight: FontWeight.bold,
                         color: Colors.black),
                   ),
@@ -860,9 +853,10 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                           return;
                         }
 
-                        final rentalId = context
-                            .read<RentalController>()
-                            .RentalId;
+                        final rentalId =
+                            context
+                                .read<RentalController>()
+                                .RentalId;
 
                         if (rentalId == null) {
                           _showTopNotification(
@@ -870,10 +864,13 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                           return;
                         }
 
-                        String? errorMessage = await context.read<
-                            RentalController>().endRental(
+                        String? errorMessage = await context
+                            .read<RentalController>()
+                            .endRental(
                           rentalId: rentalId,
                           distance: _totalDistance,
+                          positionX: userLocation.latitude,
+                          positionY: userLocation.longitude,
                           token: token,
                         );
 
@@ -895,8 +892,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                       },
                       child: const Text(
                         "End the trip",
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight
-                            .bold),
+                        style: TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.bold),
                       ),
                     ),
                   ),
@@ -1016,10 +1013,12 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                           itemBuilder: (context, index) {
                             final plan = rentalCtrl.plans[index];
                             final isSelected =
-                                rentalCtrl.selectedPlan?.id == plan.id;
+                                rentalCtrl.selectedPlan?.id ==
+                                    plan.id;
 
                             return GestureDetector(
-                              onTap: () => rentalCtrl.selectPlan(plan),
+                              onTap: () =>
+                                  rentalCtrl.selectPlan(plan),
                               child: Container(
                                 width: 90,
                                 margin: const EdgeInsets.symmetric(
@@ -1028,28 +1027,33 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                                   color: isSelected
                                       ? Colors.white
                                       : const Color(0xFFE6FF94),
-                                  border:
-                                  Border.all(color: Colors.black),
-                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                      color: Colors.black),
+                                  borderRadius:
+                                  BorderRadius.circular(8),
                                 ),
                                 child: Column(
                                   children: [
                                     Container(
-                                      padding: const EdgeInsets.symmetric(
+                                      padding:
+                                      const EdgeInsets.symmetric(
                                           vertical: 4),
                                       width: double.infinity,
                                       decoration: const BoxDecoration(
                                           border: Border(
                                               bottom: BorderSide(
-                                                  color: Colors.black))),
+                                                  color:
+                                                  Colors.black))),
                                       child: Center(
                                           child: Text(plan.planName,
                                               style: const TextStyle(
-                                                  fontWeight: FontWeight.bold,
+                                                  fontWeight:
+                                                  FontWeight.bold,
                                                   fontSize: 12))),
                                     ),
                                     Padding(
-                                      padding: const EdgeInsets.all(4.0),
+                                      padding:
+                                      const EdgeInsets.all(4.0),
                                       child: Text(
                                           "${plan.price.toStringAsFixed(
                                               1)} Zł\n/${plan.time} min",
@@ -1092,8 +1096,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
             return Align(
               alignment: Alignment.bottomCenter,
               child: Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 10, vertical: 5),
+                padding:
+                const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: const BoxDecoration(color: Colors.black),
                 child: Container(
                   padding: const EdgeInsets.all(15),
@@ -1182,10 +1186,12 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                           itemBuilder: (context, index) {
                             final plan = rentalCtrl.plans[index];
                             final isSelected =
-                                rentalCtrl.selectedPlan?.id == plan.id;
+                                rentalCtrl.selectedPlan?.id ==
+                                    plan.id;
 
                             return GestureDetector(
-                              onTap: () => rentalCtrl.selectPlan(plan),
+                              onTap: () =>
+                                  rentalCtrl.selectPlan(plan),
                               child: Container(
                                 width: 90,
                                 margin: const EdgeInsets.symmetric(
@@ -1194,28 +1200,33 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                                   color: isSelected
                                       ? Colors.white
                                       : const Color(0xFFE6FF94),
-                                  border:
-                                  Border.all(color: Colors.black),
-                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                      color: Colors.black),
+                                  borderRadius:
+                                  BorderRadius.circular(8),
                                 ),
                                 child: Column(
                                   children: [
                                     Container(
-                                      padding: const EdgeInsets.symmetric(
+                                      padding:
+                                      const EdgeInsets.symmetric(
                                           vertical: 4),
                                       width: double.infinity,
                                       decoration: const BoxDecoration(
                                           border: Border(
                                               bottom: BorderSide(
-                                                  color: Colors.black))),
+                                                  color:
+                                                  Colors.black))),
                                       child: Center(
                                           child: Text(plan.planName,
                                               style: const TextStyle(
-                                                  fontWeight: FontWeight.bold,
+                                                  fontWeight:
+                                                  FontWeight.bold,
                                                   fontSize: 12))),
                                     ),
                                     Padding(
-                                      padding: const EdgeInsets.all(4.0),
+                                      padding:
+                                      const EdgeInsets.all(4.0),
                                       child: Text(
                                           "${plan.price.toStringAsFixed(
                                               1)} Zł\n/${plan.time} min",
@@ -1274,8 +1285,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                                   return;
                                 }
 
-                                final authController = context.read<
-                                    AuthController>();
+                                final authController =
+                                context.read<AuthController>();
                                 final token = authController.token;
                                 final userId = authController.userId;
 
@@ -1285,8 +1296,9 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                                   return;
                                 }
 
-                                String? errorMessage = await context.read<
-                                    RentalController>().startRental(
+                                String? errorMessage = await context
+                                    .read<RentalController>()
+                                    .startRental(
                                   vehicleId: vehicle.id,
                                   planId: rentalCtrl.selectedPlan!.id,
                                   userId: userId,
@@ -1305,8 +1317,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                                   _showTopNotification(
                                       context, "Rental started successfully!");
                                 } else {
-                                  _showTopNotification(context,
-                                      errorMessage);
+                                  _showTopNotification(context, errorMessage);
                                 }
                               },
                               child: const Text(
@@ -1339,15 +1350,13 @@ class Pointer extends CustomPainter {
     final centerY = size.height / 2;
     final radius = size.width / 2;
     final Paint paint = Paint()
-      ..shader = RadialGradient(
-          colors: [
-            Colors.blueAccent.withOpacity(0.6),
-            Colors.blueAccent.withOpacity(0.0)
-          ],
-          stops: const [
-            0.3,
-            1.0
-          ]).createShader(
+      ..shader = RadialGradient(colors: [
+        Colors.blueAccent.withOpacity(0.6),
+        Colors.blueAccent.withOpacity(0.0)
+      ], stops: const [
+        0.3,
+        1.0
+      ]).createShader(
           Rect.fromCircle(center: Offset(centerX, centerY), radius: radius));
     const double angleWidth = 25.0 * (math.pi / 180);
     final Path path = Path()

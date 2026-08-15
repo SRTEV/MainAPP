@@ -4,8 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 
-import '../Controllers/AuthController.dart';
-
 class UserController extends ChangeNotifier {
   String get serverApi => dotenv.env['SERVER']!;
   String? userName;
@@ -90,8 +88,6 @@ class UserController extends ChangeNotifier {
 
 
   Future<String?> giveMeHeplPlease(String text, String type, int? VehicleId , String? email, int? userId) async {
-    final auth = AuthController();
-
     if (text.isEmpty) {
       return "Text field is empty";
     }
