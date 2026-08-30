@@ -41,7 +41,7 @@ class ZoneController extends ChangeNotifier {
     notifyListeners();
 
     final url = Uri.parse(
-      'http://$serverApi:5194/api/Zone/VehicleType/$vehicleTypeId',
+      '$serverApi/api/Zone/VehicleType/$vehicleTypeId',
     );
     try {
       final response = await http.get(

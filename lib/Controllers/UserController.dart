@@ -25,7 +25,7 @@ class UserController extends ChangeNotifier {
     isLoading = true;
     notifyListeners();
 
-    final url = Uri.parse('http://$serverApi:5194/api/User/$id');
+    final url = Uri.parse('$serverApi/api/User/$id');
     try {
       final response = await http.get(Uri.parse(url.toString()),
         headers: {
@@ -61,7 +61,7 @@ class UserController extends ChangeNotifier {
   }
 
   Future<void> deleteAccount(int id, String text, String token ) async {
-    final url = Uri.parse('http://$serverApi:5194/api/User/Delete/$id');
+    final url = Uri.parse('$serverApi/api/User/Delete/$id');
 
     try {
       final response = await http.post(
@@ -92,7 +92,7 @@ class UserController extends ChangeNotifier {
       return "Text field is empty";
     }
 
-    final url = Uri.parse('http://$serverApi:5194/api/Report');
+    final url = Uri.parse('$serverApi/api/Report');
 
     try {
       final response = await http.post(
@@ -126,7 +126,7 @@ class UserController extends ChangeNotifier {
       return "Invalid date format. Use MM/YY";
     }
 
-    final url = Uri.parse('http://$serverApi:5194/api/Card');
+    final url = Uri.parse('$serverApi/api/Card');
 
     try {
       final response = await http.post(
@@ -153,7 +153,7 @@ class UserController extends ChangeNotifier {
   }
 
   Future<String?> deleteCard(int cardId, String token) async {
-    final url = Uri.parse('http://$serverApi:5194/api/Card/delete/$cardId');
+    final url = Uri.parse('$serverApi/api/Card/delete/$cardId');
     try {
       final response = await http.delete(
         url,
@@ -183,7 +183,7 @@ class UserController extends ChangeNotifier {
       return "Invalid date format. Use MM/YY";
     }
 
-    final url = Uri.parse('http://$serverApi:5194/api/Card/$cardId');
+    final url = Uri.parse('$serverApi/api/Card/$cardId');
 
     try {
       final response = await http.put(
@@ -212,8 +212,7 @@ class UserController extends ChangeNotifier {
 
   Future<String?> updateUser(int userId, String name, String email,
       String token) async {
-    final url = Uri.parse(
-        'http://$serverApi:5194/api/User/ChangeAccountInfo/$userId');
+    final url = Uri.parse('$serverApi/api/User/ChangeAccountInfo/$userId');
 
     try {
       final response = await http.post(

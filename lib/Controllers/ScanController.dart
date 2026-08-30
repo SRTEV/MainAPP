@@ -14,9 +14,7 @@ class ScanController extends ChangeNotifier {
     isLoading = true;
     notifyListeners();
 
-    final url = Uri.parse(
-      'http://$serverApi:5194/api/Vehicle/scan/$scannedCode',
-    );
+    final url = Uri.parse('$serverApi/api/Vehicle/scan/$scannedCode');
 
     try {
       final response = await http.get(

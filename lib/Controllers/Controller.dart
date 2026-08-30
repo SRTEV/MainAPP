@@ -1,9 +1,10 @@
 import 'dart:async';
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'dart:convert';
 
 class VehicleModel {
   final int id;
@@ -63,7 +64,7 @@ class Controller extends ChangeNotifier {
   }
 
   Future<void> fetchVehicles() async {
-    final url = Uri.parse('http://$serverApi:5194/api/Vehicle');
+    final url = Uri.parse('$serverApi/api/Vehicle');
     try {
       final response = await http.get(url);
 

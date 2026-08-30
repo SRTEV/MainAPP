@@ -52,7 +52,7 @@ class RentalController extends ChangeNotifier {
 
     try {
       final url = Uri.parse(
-          'http://$serverApi:5194/api/RentalPlan/VehicleType/$vehicleTypeId');
+          '$serverApi/api/RentalPlan/VehicleType/$vehicleTypeId');
       final response = await http.get(url);
 
       if (response.statusCode == 200) {
@@ -86,7 +86,7 @@ class RentalController extends ChangeNotifier {
     required String token,
   }) async {
     try {
-      final url = Uri.parse('http://$serverApi:5194/api/Rental/start');
+      final url = Uri.parse('$serverApi/api/Rental/start');
       final response = await http.post(
         url,
         headers: {
@@ -122,7 +122,7 @@ class RentalController extends ChangeNotifier {
     required String token,
   }) async {
     try {
-      final url = Uri.parse('http://$serverApi:5194/api/Rental/end');
+      final url = Uri.parse('$serverApi/api/Rental/end');
       final response = await http.post(
         url,
         headers: {
@@ -132,8 +132,8 @@ class RentalController extends ChangeNotifier {
         body: jsonEncode({
           "rentalId": rentalId,
           "distance": distance,
-          "positionX": positionX, // Передаємо на сервер
-          "positionY": positionY, // Передаємо на сервер
+          "positionX": positionX,
+          "positionY": positionY,
         }),
       );
 
@@ -151,7 +151,7 @@ class RentalController extends ChangeNotifier {
   }
 
   Future<List<dynamic>> FetchRentalHistory(int userId, String token) async {
-    final url = Uri.parse('http://$serverApi:5194/api/Rental/History/$userId');
+    final url = Uri.parse('$serverApi/api/Rental/History/$userId');
 
     try {
       final response = await http.get(

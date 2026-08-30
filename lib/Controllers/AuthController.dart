@@ -86,7 +86,7 @@ class AuthController extends ChangeNotifier {
 
     try {
       final response = await http.post(
-        Uri.parse('http://$serverApi:5194/api/User/register/app'),
+        Uri.parse('$serverApi/api/User/register/app'),
         headers: {"Content-Type": "application/json"},
         body: json.encode({'Name': name, 'Email': email, 'Password': password}),
       );
@@ -130,7 +130,7 @@ class AuthController extends ChangeNotifier {
 
     try {
       final response = await http.post(
-        Uri.parse('http://$serverApi:5194/api/User/login/app'),
+        Uri.parse('$serverApi/api/User/login/app'),
         headers: {"Content-Type": "application/json"},
         body: json.encode({'Email': email, 'Password': password}),
       );
@@ -163,7 +163,7 @@ class AuthController extends ChangeNotifier {
       setMessage("Invalid email format", isError: true);
       return;
     }
-    final url = Uri.parse('http://$serverApi:5194/api/User/ResetPassword');
+    final url = Uri.parse('$serverApi/api/User/ResetPassword');
     try {
       final response = await http.post(
         url,
@@ -210,7 +210,7 @@ class AuthController extends ChangeNotifier {
 
     try {
       final response = await http.post(
-        Uri.parse('http://$serverApi:5194/api/User/ChangePassword'),
+        Uri.parse('$serverApi/api/User/ChangePassword'),
         headers: {"Content-Type": "application/json"},
         body: json.encode({
           'Token': token,
@@ -263,7 +263,7 @@ class AuthController extends ChangeNotifier {
     try {
       final response = await http.post(
         Uri.parse(
-            'http://$serverApi:5194/api/User/ChangeLoggedPassword/$userId'),
+            '$serverApi/api/User/ChangeLoggedPassword/$userId'),
         headers: {
           "Content-Type": "application/json",
           "Authorization": "Bearer $token",
