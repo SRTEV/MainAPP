@@ -17,6 +17,7 @@ import '../Controllers/Controller.dart';
 import '../Controllers/UserController.dart';
 import '../Controllers/ZoneController.dart';
 import 'Blocked.dart';
+import 'Challanges.dart';
 import 'ContactSupport.dart';
 import 'History.dart';
 import 'Profile.dart';
@@ -318,7 +319,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
 
   Future<void> _onItemTapped(int index, BuildContext context) async {
     if (index == 0) {
-      debugPrint('Challanges');
+      Navigator.push(
+          context, MaterialPageRoute(builder: (context) => const Challanges()));
     }
     if (index == 1) {
       Navigator.push(

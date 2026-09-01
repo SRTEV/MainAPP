@@ -5,6 +5,7 @@ import 'package:mainapp/Controllers/ScanController.dart';
 import 'package:provider/provider.dart';
 
 import 'Controllers/AuthController.dart';
+import 'Controllers/ChallangeController.dart';
 import 'Controllers/Controller.dart';
 import 'Controllers/UserController.dart';
 import 'Controllers/ZoneController.dart';
@@ -23,6 +24,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => AuthController()),
         ChangeNotifierProvider(create: (_) => ZoneController()),
         ChangeNotifierProvider(create: (_) => ScanController()),
+        ChangeNotifierProvider(create: (_) => Challangecontroller())
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,

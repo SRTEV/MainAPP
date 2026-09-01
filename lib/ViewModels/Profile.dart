@@ -26,10 +26,8 @@ class _ProfileState extends State<Profile> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {});
   }
-
 
   void notification(String message, bool isSuccess) {
     if (!mounted) return;
@@ -64,7 +62,6 @@ class _ProfileState extends State<Profile> {
               .size
               .height - topPadding - 70,
         ),
-
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(15),
         ),
@@ -75,9 +72,6 @@ class _ProfileState extends State<Profile> {
     );
   }
 
-
-
-
   @override
   Widget build(BuildContext context) {
     final userModel = context.watch<UserController>();
@@ -86,7 +80,7 @@ class _ProfileState extends State<Profile> {
       backgroundColor: Colors.white,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
           child: Column(
             children: [
               Row(
@@ -96,9 +90,15 @@ class _ProfileState extends State<Profile> {
                     onPressed: () => Navigator.pop(context),
                   ),
                   const SizedBox(width: 5),
-                  Text(
-                    userModel.userName != null ? "Hi, ${userModel.userName}!" : "Loading...",
-                    style: GoogleFonts.inter(fontSize: 30, fontWeight: FontWeight.w700),
+                  Expanded(
+                    child: Text(
+                      userModel.userName != null
+                          ? "Hi, ${userModel.userName}!"
+                          : "Loading...",
+                      style: GoogleFonts.inter(
+                          fontSize: 30, fontWeight: FontWeight.w700),
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ],
               ),
@@ -134,13 +134,14 @@ class _ProfileState extends State<Profile> {
                       notification(result, isSuccess);
                     });
                   }
-                }, horizontalPadding: 75),
+                }),
               ] else ...[
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
                     "Payment card:",
-                    style: GoogleFonts.inter(fontSize: 16,
+                    style: GoogleFonts.inter(
+                        fontSize: 16,
                         fontWeight: FontWeight.w600,
                         color: Colors.black54),
                   ),
@@ -156,8 +157,7 @@ class _ProfileState extends State<Profile> {
                     border: Border.all(color: Colors.black, width: 2.0),
                   ),
                   child: Text(
-                    "****************", // Replace with the actual card number
-
+                    "****************",
                     style: GoogleFonts.inter(
                         fontSize: 16, letterSpacing: 2, color: Colors.black87),
                   ),
@@ -183,7 +183,6 @@ class _ProfileState extends State<Profile> {
                             });
                           }
                         },
-                        horizontalPadding: 0,
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -257,7 +256,6 @@ class _ProfileState extends State<Profile> {
                             },
                           );
                         },
-                        horizontalPadding: 0,
                       ),
                     ),
                   ],
@@ -278,7 +276,6 @@ class _ProfileState extends State<Profile> {
                   ),
                 );
 
-
                 if (result != null && result is String && mounted) {
                   bool isSuccess = result.contains("success");
                   WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -286,44 +283,49 @@ class _ProfileState extends State<Profile> {
                   });
                   debugPrint(result);
                 }
-              }, horizontalPadding: 75),
+              }),
 
               const SizedBox(height: 20),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  _buildActionButton("Edit profile", Colors.black, () async {
-                    final result = await Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => EditProfile(),
-                      ));
+                  Expanded(
+                    child: _buildActionButton(
+                        "Edit profile", Colors.black, () async {
+                      final result = await Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => EditProfile()),
+                      );
 
-                    if (result != null && result is String && mounted) {
-                      bool isSuccess = result.contains("Success");
-                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                        notification(result, isSuccess);
-                      });
-                    }
-                  }, horizontalPadding: 30),
+                      if (result != null && result is String && mounted) {
+                        bool isSuccess = result.contains("Success");
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          notification(result, isSuccess);
+                        });
+                      }
+                    }),
+                  ),
                   const SizedBox(width: 15),
-                  _buildActionButton("Edit password", Colors.black, () async {
-                    final authController = Provider.of<AuthController>(
-                        context, listen: false);
+                  Expanded(
+                    child: _buildActionButton(
+                        "Edit password", Colors.black, () async {
+                      final authController = Provider.of<AuthController>(
+                          context, listen: false);
 
+                      final result = await Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) =>
+                            Editpassword(token: authController.token!)),
+                      );
 
-                    final result = await Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) =>
-                          Editpassword(token: authController.token!)),
-                    );
-
-                    if (result != null && result is String && mounted) {
-                      bool isSuccess = result.contains("success");
-                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                        notification(result, isSuccess);
-                      });
-                    }
-                  }, horizontalPadding: 20),
+                      if (result != null && result is String && mounted) {
+                        bool isSuccess = result.contains("success");
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          notification(result, isSuccess);
+                        });
+                      }
+                    }),
+                  ),
                 ],
               ),
 
@@ -337,7 +339,7 @@ class _ProfileState extends State<Profile> {
                   MaterialPageRoute(builder: (context) => const Login()),
                       (route) => false,
                 );
-              }, horizontalPadding: 90),
+              }),
 
               const SizedBox(height: 20),
 
@@ -347,7 +349,7 @@ class _ProfileState extends State<Profile> {
                   context,
                   MaterialPageRoute(builder: (context) => const DeleteAccount()),
                 );
-              }, horizontalPadding: 90),
+              }),
             ],
           ),
         ),
@@ -355,17 +357,29 @@ class _ProfileState extends State<Profile> {
     );
   }
 
-  Widget _buildActionButton(String text, Color borderColor, VoidCallback onPressed, {double horizontalPadding = 20}) {
-    return ElevatedButton(
-      onPressed: onPressed,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
-        side: BorderSide(color: borderColor, width: 2.0),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 12),
+  Widget _buildActionButton(String text, Color borderColor,
+      VoidCallback onPressed) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.black,
+          foregroundColor: Colors.white,
+          side: BorderSide(color: borderColor, width: 2.0),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20)),
+          padding: const EdgeInsets.symmetric(vertical: 12),
+        ),
+        child: Text(
+          text,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 16,
+            color: borderColor == Colors.grey ? Colors.grey : null,
+          ),
+        ),
       ),
-      child: Text(text, style: TextStyle(fontSize: 16, color: borderColor == Colors.grey ? Colors.grey : null)),
     );
   }
 }
