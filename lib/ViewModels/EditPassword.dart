@@ -168,14 +168,13 @@ class EditpasswordState extends State<Editpassword> {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     IconButton(
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
                       icon: const Icon(
                         Icons.arrow_circle_left_outlined,
                         size: 36,
+                        color: Colors.black,
                       ),
                       onPressed: () {
-                        Navigator.pop(context);
+                        Navigator.of(context).pop();
                         viewModel.clearMessage();
                       },
                     ),

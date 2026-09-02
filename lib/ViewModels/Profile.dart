@@ -20,13 +20,30 @@ class Profile extends StatefulWidget {
 }
 
 class _ProfileState extends State<Profile> {
-  OverlayEntry? _lastOverlayEntry;
-  String? _lastMessage;
-
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {});
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final authCtrl = context.read<AuthController>();
+      final userCtrl = context.read<UserController>();
+      if (authCtrl.userId != null && authCtrl.token != null) {
+        userCtrl.fetchUserName(authCtrl.userId!, authCtrl.token!);
+      }
+
+      if (userCtrl.cardId != null &&
+          (userCtrl.CardNumb == null || userCtrl.CardNumb!.isEmpty)) {
+        await userCtrl.getCardNumb(authCtrl.userId!, authCtrl.token!);
+      }
+    });
+  }
+
+  String _maskCardNumber(String? cardNumber) {
+    if (cardNumber == null) {
+      return "****************";
+    }
+    String first4 = cardNumber.substring(0, 4);
+    String last4 = cardNumber.substring(cardNumber.length - 4);
+    return "$first4****$last4";
   }
 
   void notification(String message, bool isSuccess) {
@@ -86,8 +103,12 @@ class _ProfileState extends State<Profile> {
               Row(
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.arrow_circle_left_outlined, size: 36),
-                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(
+                      Icons.arrow_circle_left_outlined,
+                      size: 36,
+                      color: Colors.black,
+                    ),
+                    onPressed: () => Navigator.of(context).pop(),
                   ),
                   const SizedBox(width: 5),
                   Expanded(
@@ -103,25 +124,44 @@ class _ProfileState extends State<Profile> {
                 ],
               ),
 
-              const SizedBox(height: 40),
+              const SizedBox(height: 30),
 
               Text(
                 userModel.balance != null
-                    ? "Outstanding balance: ${userModel.balance} Zł"
+                    ? "Outstanding balance : ${userModel.balance} Zł"
                     : "Loading...",
-                style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.w700),
+                style: GoogleFonts.inter(
+                    fontSize: 18, fontWeight: FontWeight.w700),
               ),
 
               if (userModel.balance != null && userModel.balance! > 0.0) ...[
                 const SizedBox(height: 10),
-                _buildActionButton("Pay outstanding balance", Colors.red, () {
-                  debugPrint("Pay button pressed");
-                }),
+                _buildActionButton(
+                  "Pay outstanding balance",
+                  Colors.red,
+                      () {
+                    debugPrint("Pay button pressed");
+                  },
+                  width: 260,
+                  height: 30,
+                  fontSize: 14,
+                ),
               ],
 
-              const SizedBox(height: 40),
-
+              const SizedBox(height: 16),
               if (userModel.cardId == null) ...[
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    "Payment card:",
+                    style: GoogleFonts.inter(
+                      color: Colors.black,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
                 _buildActionButton("Add payment card", Colors.black, () async {
                   final result = await Navigator.push(
                     context,
@@ -130,18 +170,23 @@ class _ProfileState extends State<Profile> {
 
                   if (result != null && result is String && mounted) {
                     bool isSuccess = result.contains("Success");
+                    if (isSuccess) {
+                      final authCtrl = context.read<AuthController>();
+                      await context.read<UserController>().fetchUserName(
+                          authCtrl.userId!, authCtrl.token!);
+                    }
                     WidgetsBinding.instance.addPostFrameCallback((_) {
                       notification(result, isSuccess);
                     });
                   }
-                }),
+                }, width: double.infinity),
               ] else ...[
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
                     "Payment card:",
                     style: GoogleFonts.inter(
-                        fontSize: 16,
+                        fontSize: 15,
                         fontWeight: FontWeight.w600,
                         color: Colors.black54),
                   ),
@@ -153,21 +198,21 @@ class _ProfileState extends State<Profile> {
                       horizontal: 15, vertical: 12),
                   decoration: BoxDecoration(
                     color: Colors.grey[100],
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: Colors.black, width: 2.0),
                   ),
                   child: Text(
-                    "****************",
+                    _maskCardNumber(userModel.CardNumb),
                     style: GoogleFonts.inter(
-                        fontSize: 16, letterSpacing: 2, color: Colors.black87),
+                        fontSize: 16, color: Colors.black87),
                   ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
                 Row(
                   children: [
                     Expanded(
                       child: _buildActionButton(
-                        "Change payment card",
+                        "Change card",
                         Colors.black,
                             () async {
                           final result = await Navigator.push(
@@ -178,25 +223,39 @@ class _ProfileState extends State<Profile> {
 
                           if (result != null && result is String && mounted) {
                             bool isSuccess = result.contains("Success");
+                            if (isSuccess) {
+                              final authCtrl = context.read<AuthController>();
+                              await context
+                                  .read<UserController>()
+                                  .fetchUserName(
+                                  authCtrl.userId!, authCtrl.token!);
+                            }
                             WidgetsBinding.instance.addPostFrameCallback((_) {
                               notification(result, isSuccess);
                             });
                           }
                         },
+                        height: 30,
+                        fontSize: 14,
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: _buildActionButton(
-                        "Remove payment card",
+                        "Remove card",
                         Colors.black,
                             () {
+                              // Зберігаємо посилання заздалегідь
+                              final dialogContext = context;
+                              final userCtrl = context.read<UserController>();
+                              final authCtrl = context.read<AuthController>();
+
                           showDialog(
-                            context: context,
-                            builder: (BuildContext context) {
+                            context: dialogContext,
+                            builder: (BuildContext ctx) {
                               return AlertDialog(
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(20),
+                                  borderRadius: BorderRadius.circular(15),
                                 ),
                                 title: Text(
                                   "Delete Payment Card",
@@ -209,7 +268,7 @@ class _ProfileState extends State<Profile> {
                                 ),
                                 actions: [
                                   TextButton(
-                                    onPressed: () => Navigator.pop(context),
+                                    onPressed: () => Navigator.pop(ctx),
                                     child: const Text("Cancel",
                                         style: TextStyle(color: Colors.black)),
                                   ),
@@ -217,35 +276,30 @@ class _ProfileState extends State<Profile> {
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: Colors.red,
                                       shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(10),
+                                        borderRadius: BorderRadius.circular(8),
                                       ),
                                     ),
                                     onPressed: () async {
-                                      Navigator.pop(context);
-
-                                      final userCtrl = context.read<
-                                          UserController>();
-                                      final authCtrl = context.read<
-                                          AuthController>();
+                                      Navigator.pop(ctx); // Закриваємо діалог
 
                                       int cardId = int.parse(
                                           userModel.cardId.toString());
                                       String? message = await userCtrl
                                           .deleteCard(cardId, authCtrl.token!);
 
-                                      if (context.mounted) {
+                                      if (mounted) {
                                         bool isSuccess = message != null &&
                                             message.contains("Success");
 
-                                        notification(
-                                            message ?? "Done", isSuccess);
-
                                         if (isSuccess) {
+                                          // Оновлюємо дані юзера, щоб cardId став null і зникли поля карти
                                           await userCtrl.fetchUserName(
                                               authCtrl.userId!,
                                               authCtrl.token!);
-                                          setState(() {});
                                         }
+
+                                        notification(
+                                            message ?? "Done", isSuccess);
                                       }
                                     },
                                     child: const Text("Delete",
@@ -256,100 +310,151 @@ class _ProfileState extends State<Profile> {
                             },
                           );
                         },
+                        height: 30,
+                        fontSize: 14,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 40),
               ],
 
-              const SizedBox(height: 95),
+              const SizedBox(height: 180),
 
-              _buildActionButton("Contact to support", Colors.black, () async {
-                final result = await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => Contactsupport(
-                      vehicleId: null,
-                      email: context.read<UserController>().userEmail,
-                    ),
-                  ),
-                );
+              // Кнопка Contact to support
+              Center(
+                child: _buildActionButton(
+                  "Contact to support",
+                  Colors.black,
+                      () async {
+                    final result = await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            Contactsupport(
+                              vehicleId: null,
+                              email: context
+                                  .read<UserController>()
+                                  .userEmail,
+                            ),
+                      ),
+                    );
 
-                if (result != null && result is String && mounted) {
-                  bool isSuccess = result.contains("success");
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    notification(result, isSuccess);
-                  });
-                  debugPrint(result);
-                }
-              }),
+                    if (result != null && result is String && mounted) {
+                      bool isSuccess = result.contains("success");
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        notification(result, isSuccess);
+                      });
+                    }
+                  },
+                  width: 300,
+                ),
+              ),
 
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
+
+              // Рядок з маленькими кнопками Edit profile та Edit password
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Expanded(
                     child: _buildActionButton(
-                        "Edit profile", Colors.black, () async {
-                      final result = await Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => EditProfile()),
-                      );
+                      "Edit profile",
+                      Colors.black,
+                          () async {
+                        final result = await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => EditProfile()),
+                        );
 
-                      if (result != null && result is String && mounted) {
-                        bool isSuccess = result.contains("Success");
-                        WidgetsBinding.instance.addPostFrameCallback((_) {
-                          notification(result, isSuccess);
-                        });
-                      }
-                    }),
+                        if (result != null && result is String && mounted) {
+                          bool isSuccess = result.contains("Success");
+                          if (isSuccess) {
+                            final authCtrl = context.read<AuthController>();
+                            await context.read<UserController>().fetchUserName(
+                                authCtrl.userId!, authCtrl.token!);
+                          }
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            notification(result, isSuccess);
+                          });
+                        }
+                      },
+                      height: 30,
+                      fontSize: 14,
+                    ),
                   ),
                   const SizedBox(width: 15),
                   Expanded(
                     child: _buildActionButton(
-                        "Edit password", Colors.black, () async {
-                      final authController = Provider.of<AuthController>(
-                          context, listen: false);
+                      "Edit password",
+                      Colors.black,
+                          () async {
+                        final authController = Provider.of<AuthController>(
+                            context, listen: false);
 
-                      final result = await Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) =>
-                            Editpassword(token: authController.token!)),
-                      );
+                        final result = await Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) =>
+                              Editpassword(token: authController.token!)),
+                        );
 
-                      if (result != null && result is String && mounted) {
-                        bool isSuccess = result.contains("success");
-                        WidgetsBinding.instance.addPostFrameCallback((_) {
-                          notification(result, isSuccess);
-                        });
-                      }
-                    }),
+                        if (result != null && result is String && mounted) {
+                          bool isSuccess = result.contains("success");
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            notification(result, isSuccess);
+                          });
+                        }
+                      },
+                      height: 30,
+                      fontSize: 14,
+                    ),
                   ),
                 ],
               ),
 
-              const SizedBox(height: 90),
-              _buildActionButton("Log out", Colors.grey, () {
-                final auth = context.read<AuthController>();
-                auth.clearMessage();
-                auth.clearSomeData();
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (context) => const Login()),
-                      (route) => false,
-                );
-              }),
+              const SizedBox(height: 80),
+
+              // Кнопка Log out
+              Center(
+                child: _buildActionButton(
+                  "Log out",
+                  Colors.grey,
+                      () {
+                    final auth = context.read<AuthController>();
+                    auth.clearMessage();
+                    auth.clearSomeData();
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(builder: (context) => const Login()),
+                          (route) => false,
+                    );
+                  },
+                  width: 220,
+                  height: 30,
+                  fontSize: 14,
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // Кнопка Delete account
+              Center(
+                child: _buildActionButton(
+                  "Delete account",
+                  Colors.red,
+                      () {
+                    context.read<AuthController>().clearMessage();
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const DeleteAccount()),
+                    );
+                  },
+                  width: 320,
+                ),
+              ),
 
               const SizedBox(height: 20),
-
-              _buildActionButton("Delete account", Colors.red, () {
-                context.read<AuthController>().clearMessage();
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const DeleteAccount()),
-                );
-              }),
             ],
           ),
         ),
@@ -357,10 +462,16 @@ class _ProfileState extends State<Profile> {
     );
   }
 
-  Widget _buildActionButton(String text, Color borderColor,
-      VoidCallback onPressed) {
+  Widget _buildActionButton(String text,
+      Color borderColor,
+      VoidCallback onPressed, {
+        double? width,
+        double height = 48,
+        double fontSize = 16,
+      }) {
     return SizedBox(
-      width: double.infinity,
+      width: width ?? double.infinity,
+      height: height,
       child: ElevatedButton(
         onPressed: onPressed,
         style: ElevatedButton.styleFrom(
@@ -368,14 +479,16 @@ class _ProfileState extends State<Profile> {
           foregroundColor: Colors.white,
           side: BorderSide(color: borderColor, width: 2.0),
           shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20)),
-          padding: const EdgeInsets.symmetric(vertical: 12),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          padding: EdgeInsets.zero,
         ),
         child: Text(
           text,
           textAlign: TextAlign.center,
           style: TextStyle(
-            fontSize: 16,
+            fontSize: fontSize,
+            fontWeight: FontWeight.w600,
             color: borderColor == Colors.grey ? Colors.grey : null,
           ),
         ),

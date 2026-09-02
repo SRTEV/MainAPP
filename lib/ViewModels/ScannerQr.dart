@@ -21,15 +21,38 @@ class _ScannerQrState extends State<ScannerQr> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('Scan QR Code'),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leadingWidth: 60,
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 16.0),
+          child: IconButton(
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+            icon: const Icon(
+              Icons.arrow_circle_left_outlined,
+              size: 36,
+              color: Colors.black,
+            ),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+        ),
+        title: Text(
+          'Scan QR Code',
+          style: TextStyle(
+            color: Colors.black,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.flash_on),
+            icon: const Icon(Icons.flash_on, color: Colors.black),
             onPressed: () => _controller.toggleTorch(),
           ),
           IconButton(
-            icon: const Icon(Icons.camera_front),
+            icon: const Icon(Icons.camera_front, color: Colors.black),
             onPressed: () => _controller.switchCamera(),
           ),
         ],

@@ -38,11 +38,12 @@ class ContactsupportState extends State<Contactsupport> {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     IconButton(
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
                       icon: const Icon(
-                          Icons.arrow_circle_left_outlined, size: 36),
-                      onPressed: () => Navigator.pop(context, null),
+                        Icons.arrow_circle_left_outlined,
+                        size: 36,
+                        color: Colors.black,
+                      ),
+                      onPressed: () => Navigator.of(context).pop(),
                     ),
                     const SizedBox(width: 15),
                     Text(

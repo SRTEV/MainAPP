@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:http/http.dart';
-import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../Controllers/UserController.dart';
-import '../Controllers/Controller.dart';
 
 
 class ContactNonLogged extends StatefulWidget {
@@ -41,10 +39,12 @@ class ContactNonLoggedState extends State<ContactNonLogged> {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   IconButton(
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                    icon: const Icon(Icons.arrow_circle_left_outlined, size: 36),
-                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(
+                      Icons.arrow_circle_left_outlined,
+                      size: 36,
+                      color: Colors.black,
+                    ),
+                    onPressed: () => Navigator.of(context).pop(),
                   ),
                   const SizedBox(width: 15),
                   Text(

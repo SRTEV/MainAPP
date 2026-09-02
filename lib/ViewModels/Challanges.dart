@@ -16,6 +16,7 @@ class Challanges extends StatefulWidget {
 class ChallangesState extends State<Challanges> {
   String? selectedCategoryName;
   int? selectedVehicleTypeId;
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
@@ -33,6 +34,12 @@ class ChallangesState extends State<Challanges> {
         }
       });
     });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   void _loadCompetitionData() {
@@ -59,333 +66,364 @@ class ChallangesState extends State<Challanges> {
       body: SafeArea(
         child: competitionVm.isLoading || vehicleController.vehicles.isEmpty
             ? const Center(
-                child: CircularProgressIndicator(color: Colors.black),
-              )
+          child: CircularProgressIndicator(color: Colors.black),
+        )
             : SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24.0,
-                  vertical: 16.0,
+          padding: const EdgeInsets.symmetric(
+            horizontal: 24.0,
+            vertical: 16.0,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Заголовок екрана
+              Row(
+                children: [
+                  IconButton(
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    icon: const Icon(
+                      Icons.arrow_circle_left_outlined,
+                      size: 36,
+                      color: Colors.black,
+                    ),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    "Challenges",
+                    style: GoogleFonts.inter(
+                      fontSize: 26,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.black,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+
+              // Картка вибору категорії та опису челенджу
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.black,
+                  borderRadius: BorderRadius.circular(24),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        IconButton(
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
-                          icon: const Icon(
-                            Icons.arrow_circle_left_outlined,
-                            size: 36,
-                            color: Colors.black,
-                          ),
-                          onPressed: () => Navigator.of(context).pop(),
-                        ),
-                        const SizedBox(width: 12),
                         Text(
-                          "Challenges",
+                          "Select your category:",
                           style: GoogleFonts.inter(
-                            fontSize: 26,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.black,
-                            letterSpacing: -0.5,
+                            color: Colors.grey.shade400,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
+                        if (competitionVm.isEnded)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.red.shade800,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              "ENDED",
+                              style: GoogleFonts.inter(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
                       ],
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 10),
                     Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(20),
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
                       decoration: BoxDecoration(
-                        color: Colors.black,
-                        borderRadius: BorderRadius.circular(24),
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(16),
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                "Select your category:",
-                                style: GoogleFonts.inter(
-                                  color: Colors.grey.shade400,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              if (competitionVm.isEnded)
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 4,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.red.shade800,
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Text(
-                                    "ENDED",
-                                    style: GoogleFonts.inter(
-                                      color: Colors.white,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                            ],
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: availableTypes.contains(
+                            selectedCategoryName,
+                          )
+                              ? selectedCategoryName
+                              : null,
+                          isExpanded: true,
+                          dropdownColor: Colors.white,
+                          icon: const Icon(
+                            Icons.keyboard_arrow_down,
+                            color: Colors.black,
                           ),
-                          const SizedBox(height: 10),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            decoration: BoxDecoration(
-                              color: Colors.grey.shade300,
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: DropdownButtonHideUnderline(
-                              child: DropdownButton<String>(
-                                value:
-                                    availableTypes.contains(
-                                      selectedCategoryName,
-                                    )
-                                    ? selectedCategoryName
-                                    : null,
-                                isExpanded: true,
-                                dropdownColor: Colors.white,
-                                icon: const Icon(
-                                  Icons.keyboard_arrow_down,
-                                  color: Colors.black,
-                                ),
-                                style: GoogleFonts.inter(
-                                  color: Colors.black,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                                items: availableTypes.map((String typeName) {
-                                  return DropdownMenuItem<String>(
-                                    value: typeName,
-                                    child: Text(typeName),
-                                  );
-                                }).toList(),
-                                onChanged: (String? newTypeName) {
-                                  if (newTypeName != null) {
-                                    setState(() {
-                                      selectedCategoryName = newTypeName;
-                                      final matchedVehicle = vehicleController
-                                          .vehicles
-                                          .firstWhere(
-                                            (v) => v.type == newTypeName,
-                                            orElse: () => vehicleController
-                                                .vehicles
-                                                .first,
-                                          );
-                                      selectedVehicleTypeId =
-                                          matchedVehicle.vehicleTypeId;
-                                    });
-                                    _loadCompetitionData();
-                                  }
-                                },
-                              ),
-                            ),
+                          style: GoogleFonts.inter(
+                            color: Colors.black,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
                           ),
-                          const SizedBox(height: 24),
-                          Text(
-                            competitionVm.message.isNotEmpty &&
-                                    competitionVm.competitionId == null
-                                ? competitionVm.message
-                                : (competitionVm.description ??
-                                      "Travel ${competitionVm.goalValue ?? 0} kilometers on $selectedCategoryName"),
-                            style: GoogleFonts.inter(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
+                          items: availableTypes.map((String typeName) {
+                            return DropdownMenuItem<String>(
+                              value: typeName,
+                              child: Text(typeName),
+                            );
+                          }).toList(),
+                          onChanged: (String? newTypeName) {
+                            if (newTypeName != null) {
+                              setState(() {
+                                selectedCategoryName = newTypeName;
+                                final matchedVehicle = vehicleController
+                                    .vehicles
+                                    .firstWhere(
+                                      (v) => v.type == newTypeName,
+                                  orElse: () =>
+                                  vehicleController
+                                      .vehicles
+                                      .first,
+                                );
+                                selectedVehicleTypeId =
+                                    matchedVehicle.vehicleTypeId;
+                              });
+                              _loadCompetitionData();
+                            }
+                          },
+                        ),
                       ),
                     ),
                     const SizedBox(height: 24),
-
-                    // Список призових місць
-                    if (competitionVm.competitionId != null) ...[
-                      ...competitionVm.rewardTypes.map(
-                        (reward) => Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: _buildRewardRow(
-                            "🏆",
-                            "${reward['name']}: ${reward['unit']}km",
-                          ),
-                        ),
+                    Text(
+                      competitionVm.message.isNotEmpty &&
+                          competitionVm.competitionId == null
+                          ? competitionVm.message
+                          : (competitionVm.description ??
+                          "Travel ${competitionVm.goalValue ??
+                              0} kilometers on $selectedCategoryName"),
+                      style: GoogleFonts.inter(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
                       ),
-                      const SizedBox(height: 24),
-
-                      // Динамічна таблиця лідерів (Leaderboard)
-                      Container(
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade200,
-                          borderRadius: BorderRadius.circular(24),
-                          border: Border.all(
-                            color: Colors.grey.shade300,
-                            width: 1.5,
-                          ),
-                        ),
-                        child: Column(
-                          children: [
-                            Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              decoration: BoxDecoration(
-                                color: Colors.grey.shade300,
-                                borderRadius: const BorderRadius.only(
-                                  topLeft: Radius.circular(22),
-                                  topRight: Radius.circular(22),
-                                ),
-                              ),
-                              child: Text(
-                                "Leaderboard",
-                                textAlign: TextAlign.center,
-                                style: GoogleFonts.inter(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.black,
-                                ),
-                              ),
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.all(16.0),
-                              child: competitionVm.leaderboard.isEmpty
-                                  ? Padding(
-                                      padding: const EdgeInsets.all(16.0),
-                                      child: Text(
-                                        "No participants yet",
-                                        style: GoogleFonts.inter(
-                                          color: Colors.grey.shade600,
-                                        ),
-                                      ),
-                                    )
-                                  : ListView.builder(
-                                      shrinkWrap: true,
-                                      physics:
-                                          const NeverScrollableScrollPhysics(),
-                                      itemCount:
-                                          competitionVm.leaderboard.length,
-                                      itemBuilder: (context, index) {
-                                        final entry =
-                                            competitionVm.leaderboard[index];
-
-                                        final int rank =
-                                            entry['rank'] ?? (index + 1);
-                                        final String name =
-                                            entry['name'] ?? 'User';
-                                        final int score = entry['score'] ?? 0;
-                                        final int entryUserId =
-                                            entry['userId'] ?? 0;
-
-                                        final authVm = context
-                                            .read<AuthController>();
-                                        final bool isMe =
-                                            entryUserId == authVm.userId;
-
-                                        return Container(
-                                          margin: const EdgeInsets.only(
-                                            bottom: 8,
-                                          ),
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 16,
-                                            vertical: 12,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: isMe
-                                                ? Colors.white
-                                                : Colors.transparent,
-                                            borderRadius: BorderRadius.circular(
-                                              16,
-                                            ),
-                                            border: isMe
-                                                ? Border.all(
-                                                    color: Colors.blue.shade300,
-                                                    width: 1.5,
-                                                  )
-                                                : Border.all(
-                                                    color: Colors.transparent,
-                                                  ),
-                                          ),
-                                          child: Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.spaceBetween,
-                                            children: [
-                                              Expanded(
-                                                child: Row(
-                                                  children: [
-                                                    Text(
-                                                      "$rank. ",
-                                                      style: GoogleFonts.inter(
-                                                        fontSize: 16,
-                                                        fontWeight:
-                                                            FontWeight.w700,
-                                                        color: Colors.black,
-                                                      ),
-                                                    ),
-                                                    Flexible(
-                                                      child: Text(
-                                                        name,
-                                                        overflow: TextOverflow
-                                                            .ellipsis,
-                                                        style:
-                                                            GoogleFonts.inter(
-                                                              fontSize: 16,
-                                                              fontWeight: isMe
-                                                                  ? FontWeight
-                                                                        .w800
-                                                                  : FontWeight
-                                                                        .w600,
-                                                              color:
-                                                                  Colors.black,
-                                                            ),
-                                                      ),
-                                                    ),
-                                                    if (isMe) ...[
-                                                      const SizedBox(width: 4),
-                                                      Text(
-                                                        "(You)",
-                                                        style:
-                                                            GoogleFonts.inter(
-                                                              fontSize: 16,
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .w800,
-                                                              color:
-                                                                  Colors.black,
-                                                            ),
-                                                      ),
-                                                    ],
-                                                  ],
-                                                ),
-                                              ),
-                                              const SizedBox(width: 8),
-                                              Text(
-                                                "$score",
-                                                style: GoogleFonts.inter(
-                                                  fontSize: 16,
-                                                  fontWeight: FontWeight.w700,
-                                                  color: Colors.black,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        );
-                                      },
-                                    ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+                    ),
                   ],
                 ),
               ),
+              const SizedBox(height: 24),
+
+              // Список призових місць та адаптивна таблиця лідерів
+              if (competitionVm.competitionId != null) ...[
+                ...competitionVm.rewardTypes.map(
+                      (reward) =>
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _buildRewardRow(
+                          "🏆",
+                          "${reward['name']}: ${reward['unit']}km",
+                        ),
+                      ),
+                ),
+                const SizedBox(height: 24),
+
+                // Адаптивний контейнер лідерів (висота підлаштовується під кількість елементів до ~300px)
+                Container(
+                  width: double.infinity,
+                  constraints: const BoxConstraints(maxHeight: 300),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade200,
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(
+                      color: Colors.grey.shade300,
+                      width: 1.5,
+                    ),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade300,
+                          borderRadius: const BorderRadius.only(
+                            topLeft: Radius.circular(22),
+                            topRight: Radius.circular(22),
+                          ),
+                        ),
+                        child: Text(
+                          "Leaderboard",
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.inter(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.black,
+                          ),
+                        ),
+                      ),
+                      Flexible(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: competitionVm.leaderboard.isEmpty
+                              ? Center(
+                            child: Text(
+                              "No participants yet",
+                              style: GoogleFonts.inter(
+                                color: Colors.grey.shade600,
+                              ),
+                            ),
+                          )
+                              : RawScrollbar(
+                            controller: _scrollController,
+                            thumbColor: Colors.black54,
+                            radius: const Radius.circular(8),
+                            thickness: 6,
+                            thumbVisibility: true,
+                            child: ListView.builder(
+                              controller: _scrollController,
+                              shrinkWrap: true,
+                              itemCount: competitionVm
+                                  .leaderboard
+                                  .length,
+                              itemBuilder: (context, index) {
+                                final entry = competitionVm
+                                    .leaderboard[index];
+
+                                final int rank =
+                                    entry['rank'] ??
+                                        (index + 1);
+                                final String name =
+                                    entry['name'] ?? 'User';
+                                final int score =
+                                    entry['score'] ?? 0;
+                                final int entryUserId =
+                                    entry['userId'] ?? 0;
+
+                                final authVm = context
+                                    .read<AuthController>();
+                                final bool isMe =
+                                    entryUserId == authVm.userId;
+
+                                return Container(
+                                  margin: const EdgeInsets.only(
+                                    bottom: 8,
+                                  ),
+                                  padding:
+                                  const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 12,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: isMe
+                                        ? Colors.white
+                                        : Colors.transparent,
+                                    borderRadius:
+                                    BorderRadius.circular(
+                                      16,
+                                    ),
+                                    border: isMe
+                                        ? Border.all(
+                                      color: Colors
+                                          .blue
+                                          .shade300,
+                                      width: 1.5,
+                                    )
+                                        : Border.all(
+                                      color: Colors
+                                          .transparent,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment:
+                                    MainAxisAlignment
+                                        .spaceBetween,
+                                    children: [
+                                      Expanded(
+                                        child: Row(
+                                          children: [
+                                            Text(
+                                              "$rank. ",
+                                              style: GoogleFonts
+                                                  .inter(
+                                                fontSize: 16,
+                                                fontWeight:
+                                                FontWeight
+                                                    .w700,
+                                                color: Colors
+                                                    .black,
+                                              ),
+                                            ),
+                                            Flexible(
+                                              child: Text(
+                                                name,
+                                                overflow:
+                                                TextOverflow
+                                                    .ellipsis,
+                                                style: GoogleFonts
+                                                    .inter(
+                                                  fontSize: 16,
+                                                  fontWeight: isMe
+                                                      ? FontWeight
+                                                      .w800
+                                                      : FontWeight
+                                                      .w600,
+                                                  color: Colors
+                                                      .black,
+                                                ),
+                                              ),
+                                            ),
+                                            if (isMe) ...[
+                                              const SizedBox(
+                                                width: 4,
+                                              ),
+                                              Text(
+                                                "(You)",
+                                                style: GoogleFonts
+                                                    .inter(
+                                                  fontSize: 16,
+                                                  fontWeight:
+                                                  FontWeight
+                                                      .w800,
+                                                  color: Colors
+                                                      .black,
+                                                ),
+                                              ),
+                                            ],
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        "$score",
+                                        style: GoogleFonts
+                                            .inter(
+                                          fontSize: 16,
+                                          fontWeight:
+                                          FontWeight.w700,
+                                          color: Colors.black,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }

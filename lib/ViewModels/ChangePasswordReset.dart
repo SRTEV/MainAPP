@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+
 import '../Controllers/AuthController.dart';
 import 'Login.dart';
 
@@ -50,13 +51,16 @@ class _ChangePasswordResetState extends State<ChangePasswordReset> {
                 Row(
                   children: [
                     IconButton(
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                        icon: const Icon(Icons.arrow_circle_left_outlined, size: 36),
-                        onPressed: () {
-                          Navigator.pop(context);
-                          viewModel.clearMessage();
-                        }),
+                      icon: const Icon(
+                        Icons.arrow_circle_left_outlined,
+                        size: 36,
+                        color: Colors.black,
+                      ),
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        viewModel.clearMessage();
+                      },
+                    ),
                     const SizedBox(width: 10),
                     Text(
                       "Reset password",

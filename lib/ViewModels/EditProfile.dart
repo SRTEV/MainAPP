@@ -157,8 +157,9 @@ class _EditProfileState extends State<EditProfile> {
                         icon: const Icon(
                           Icons.arrow_circle_left_outlined,
                           size: 36,
+                          color: Colors.black,
                         ),
-                        onPressed: () => Navigator.pop(context),
+                        onPressed: () => Navigator.of(context).pop(),
                       ),
                       const SizedBox(width: 12),
                       Text(

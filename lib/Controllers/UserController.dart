@@ -17,6 +17,9 @@ class UserController extends ChangeNotifier {
   int? cardId;
   bool? isBlocked;
   String? banReason;
+  String? CardNumb;
+  String? cardExpiryDate;
+
 
 
 
@@ -46,6 +49,12 @@ class UserController extends ChangeNotifier {
         cardId = data['cardId'];
         isBlocked = data['isBlocked'];
         banReason = data['blockedReason'];
+        if (cardId != null) {
+          await getCardNumb(id, token);
+        } else {
+          CardNumb = null;
+        }
+
 
 
        // debugPrint("User name loaded: $userName");
@@ -238,6 +247,44 @@ class UserController extends ChangeNotifier {
     }
   }
 
+
+  Future<void> getCardNumb(int userId, String token) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$serverApi/api/Card/user-card/$userId'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+
+
+        CardNumb = data['cardNumber'];
+        String rawDate = data['expiryDate'] ?? '';
+        if (rawDate.isNotEmpty) {
+          try {
+            DateTime parsedDate = DateTime.parse(rawDate);
+            String month = parsedDate.month.toString().padLeft(2, '0');
+            String year = parsedDate.year.toString().substring(2);
+            cardExpiryDate = "$month/$year";
+          } catch (_) {
+            cardExpiryDate = "";
+          }
+        }
+        notifyListeners();
+
+        debugPrint(
+            "Card details loaded: Number: $CardNumb, Expiry: $cardExpiryDate");
+      } else {
+        debugPrint("Failed to load card: ${response.body}");
+      }
+    } catch (e) {
+      debugPrint("Error fetching card: $e");
+    }
+  }
 }
 
 

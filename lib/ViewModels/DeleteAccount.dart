@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:mainapp/Controllers/UserController.dart';
 import 'package:mainapp/ViewModels/Login.dart';
 import 'package:provider/provider.dart';
+
 import '../Controllers/AuthController.dart';
 
 class DeleteAccount extends StatefulWidget {
@@ -41,8 +42,12 @@ class _DeleteAccountState extends State<DeleteAccount> {
                   Row(
                     children: [
                       IconButton(
-                        icon: const Icon(Icons.arrow_circle_left_outlined, size: 36),
-                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(
+                          Icons.arrow_circle_left_outlined,
+                          size: 36,
+                          color: Colors.black,
+                        ),
+                        onPressed: () => Navigator.of(context).pop(),
                       ),
                       const SizedBox(width: 10),
                       Text("Delete account",

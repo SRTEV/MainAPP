@@ -112,8 +112,12 @@ class _AddCardState extends State<AddCard> {
                 Row(
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.arrow_circle_left_outlined, size: 36),
-                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(
+                        Icons.arrow_circle_left_outlined,
+                        size: 36,
+                        color: Colors.black,
+                      ),
+                      onPressed: () => Navigator.of(context).pop(),
                     ),
                     Expanded(child: Center(child: Text("Add card", style: GoogleFonts.inter(fontSize: 30, fontWeight: FontWeight.w700)))),
                     const SizedBox(width: 48),

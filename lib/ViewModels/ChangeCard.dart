@@ -7,18 +7,16 @@ import 'package:provider/provider.dart';
 
 class DateInputFormatter extends TextInputFormatter {
   @override
-  TextEditingValue formatEditUpdate(
-    TextEditingValue oldValue,
-    TextEditingValue newValue,
-  ) {
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue,
+      TextEditingValue newValue) {
     String text = newValue.text.replaceAll('/', '');
 
     if (text.length > 4) text = text.substring(0, 4);
 
     if (text.length >= 3) {
       text = "${text.substring(0, 2)}/${text.substring(2)}";
-    } else if (text.length == 2 &&
-        newValue.text.length > oldValue.text.length) {
+    } else
+    if (text.length == 2 && newValue.text.length > oldValue.text.length) {
       text = "$text/";
     }
 
@@ -28,7 +26,6 @@ class DateInputFormatter extends TextInputFormatter {
     );
   }
 }
-
 class Changecard extends StatefulWidget {
   const Changecard({super.key});
 
@@ -44,6 +41,31 @@ class _ChangecardState extends State<Changecard> {
   String? _cardError;
   String? _cvvError;
   String? _expiryError;
+
+  // Змінні для збереження початкових значень з контролера
+  String _initialCardNumber = '';
+  String _initialExpiry = '';
+  bool _isInitialized = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_isInitialized) {
+      final userCtrl = context.read<UserController>();
+
+      // Підтягуємо поточний номер та термін дії з бекенду (якщо вони завантажені)
+      _initialCardNumber = userCtrl.CardNumb ?? '';
+      _initialExpiry = userCtrl.cardExpiryDate ?? '';
+
+      _cardNumberController.text = _initialCardNumber;
+      _expiryController.text = _initialExpiry;
+
+      // CVV з міркувань безпеки зазвичай не зберігається у відкритому вигляді на клієнті
+      _cvvController.text = '';
+
+      _isInitialized = true;
+    }
+  }
 
   void _hideKeyboard() {
     FocusScope.of(context).requestFocus(FocusNode());
@@ -72,7 +94,6 @@ class _ChangecardState extends State<Changecard> {
     try {
       final parts = _expiryController.text.split('/');
 
-      // Перевіряємо, чи введено саме 5 символів (XX/XX)
       if (_expiryController.text.length != 5 || parts.length != 2) {
         throw Exception();
       }
@@ -80,14 +101,12 @@ class _ChangecardState extends State<Changecard> {
       int month = int.parse(parts[0]);
       int year = int.parse("20${parts[1]}");
 
-      // Перевірка коректності місяця
       if (month < 1 || month > 12) {
         setState(() => _expiryError = "Invalid month");
         return false;
       }
 
       DateTime now = DateTime.now();
-      // Останній день введеного місяця
       DateTime expiry = DateTime(year, month + 1, 0);
 
       if (expiry.isBefore(DateTime(now.year, now.month))) {
@@ -121,8 +140,9 @@ class _ChangecardState extends State<Changecard> {
                       icon: const Icon(
                         Icons.arrow_circle_left_outlined,
                         size: 36,
+                        color: Colors.black,
                       ),
-                      onPressed: () => Navigator.pop(context),
+                      onPressed: () => Navigator.of(context).pop(),
                     ),
                     Expanded(
                       child: Center(
@@ -213,6 +233,21 @@ class _ChangecardState extends State<Changecard> {
                   child: ElevatedButton(
                     onPressed: () async {
                       _hideKeyboard();
+
+                      // Перевірка: чи є реальні зміни або чи поля заповнені
+                      bool isCardChanged = _cardNumberController.text !=
+                          _initialCardNumber;
+                      bool isExpiryChanged = _expiryController.text !=
+                          _initialExpiry;
+                      bool isCvvProvided = _cvvController.text.isNotEmpty;
+
+                      // Якщо нічого не змінювалося і не введено новий CVV — виходимо без запиту
+                      if (!isCardChanged && !isExpiryChanged &&
+                          !isCvvProvided) {
+                        Navigator.pop(context, "No changes made");
+                        return;
+                      }
+
                       if (!_validateInputs()) return;
 
                       final userCtrl = context.read<UserController>();
@@ -273,7 +308,6 @@ class _ChangecardState extends State<Changecard> {
       fillColor: Colors.grey[100],
       isDense: true,
       contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
-      // Рамка завжди видима:
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(15),
         borderSide: const BorderSide(color: Colors.black, width: 1.0),
@@ -286,7 +320,6 @@ class _ChangecardState extends State<Changecard> {
         borderRadius: BorderRadius.circular(15),
         borderSide: const BorderSide(color: Colors.black, width: 2.0),
       ),
-      // Підсвітка помилки:
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(15),
         borderSide: const BorderSide(color: Colors.red, width: 1.0),
