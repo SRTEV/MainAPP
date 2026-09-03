@@ -43,7 +43,6 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   Timer? _timerRent;
   Duration _timerRentDuration = Duration.zero;
 
-  double _totalDistance = 0.0;
   LatLng? _lastPosition;
   dynamic _selectedVehicle;
   dynamic _startedRental;
@@ -121,7 +120,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                 ),
               ),
             ),
-      ),
+          ),
     );
 
     overlayState.insert(overlayEntry);
@@ -294,11 +293,6 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
             return;
           }
 
-          if (_activeRental != null) {
-            if (distanceInMeters > 1.0) {
-              _totalDistance += distanceInMeters / 1000.0;
-            }
-          }
           _lastPosition = newLatLng;
         }
 
@@ -870,9 +864,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                             .read<RentalController>()
                             .endRental(
                           rentalId: rentalId,
-                          distance: _totalDistance,
-                          positionX: userLocation.latitude,
-                          positionY: userLocation.longitude,
+
                           token: token,
                         );
 

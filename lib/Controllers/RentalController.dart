@@ -116,9 +116,6 @@ class RentalController extends ChangeNotifier {
 
   Future<String?> endRental({
     required int rentalId,
-    required double distance,
-    required double positionX,
-    required double positionY,
     required String token,
   }) async {
     try {
@@ -131,9 +128,6 @@ class RentalController extends ChangeNotifier {
         },
         body: jsonEncode({
           "rentalId": rentalId,
-          "distance": distance,
-          "positionX": positionX,
-          "positionY": positionY,
         }),
       );
 

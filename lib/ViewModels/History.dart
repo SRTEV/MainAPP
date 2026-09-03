@@ -120,7 +120,7 @@ class _HistoryState extends State<History> {
                             item['vehicle'] as Map<String, dynamic>? ?? {};
                         final vehicleType = vehicle['vehicleTypeId'];
 
-                        final distance = '${item['distance'] ?? 0} km';
+                        final distance = '${item['distance'] ?? 0} m';
                         final dateTime = item['endTime'] != null
                             ? DateTime.parse(
                                 item['endTime'],
