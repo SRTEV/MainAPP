@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:mainapp/Controllers/ChallangeController.dart';
 import 'package:provider/provider.dart';
 
 import '../Controllers/AuthController.dart';
 import '../Controllers/UserController.dart';
 import 'AddCart.dart';
 import 'ChangeCard.dart';
+import 'CompetitionRewardsPage.dart';
 import 'ContactSupport.dart';
 import 'DeleteAccount.dart';
 import 'EditPassword.dart';
@@ -318,9 +320,47 @@ class _ProfileState extends State<Profile> {
                 ),
               ],
 
-              const SizedBox(height: 180),
+              const SizedBox(height: 120),
+              Center(
+                child: _buildActionButton(
+                  "Your Prizes",
+                  Colors.black,
+                      () async {
+                    final challengeController = context.read<
+                        Challangecontroller>();
+                    final authController = context.read<AuthController>();
 
-              // Кнопка Contact to support
+                    final competitionId = challengeController.competitionId;
+                    final userId = authController.userId;
+                    final token = authController.token;
+
+                    if (competitionId != null && userId != null &&
+                        token != null) {
+                      // Завантажуємо результат перед переходом
+                      await challengeController.fetchUserResult(
+                          token, userId, competitionId);
+
+                      if (mounted) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                Competitionrewardspage(
+                                  userId: userId,
+                                  competitionId: competitionId,
+                                ),
+                          ),
+                        );
+                      }
+                    } else {
+                      notification("Competition data not loaded yet.", false);
+                    }
+                  },
+                  width: 300,
+                ),
+              ),
+              const SizedBox(height: 16),
+              const SizedBox(height: 50),
               Center(
                 child: _buildActionButton(
                   "Contact to support",

@@ -64,7 +64,7 @@ class ChallangesState extends State<Challanges> {
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: competitionVm.isLoading || vehicleController.vehicles.isEmpty
+        child: competitionVm.isLoading
             ? const Center(
           child: CircularProgressIndicator(color: Colors.black),
         )
@@ -76,7 +76,6 @@ class ChallangesState extends State<Challanges> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Заголовок екрана
               Row(
                 children: [
                   IconButton(
@@ -103,7 +102,6 @@ class ChallangesState extends State<Challanges> {
               ),
               const SizedBox(height: 24),
 
-              // Картка вибору категорії та опису челенджу
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(20),
@@ -205,8 +203,7 @@ class ChallangesState extends State<Challanges> {
                           competitionVm.competitionId == null
                           ? competitionVm.message
                           : (competitionVm.description ??
-                          "Travel ${competitionVm.goalValue ??
-                              0} kilometers on $selectedCategoryName"),
+                          "Select category to view challenge"),
                       style: GoogleFonts.inter(
                         color: Colors.white,
                         fontSize: 18,
@@ -218,21 +215,39 @@ class ChallangesState extends State<Challanges> {
               ),
               const SizedBox(height: 24),
 
-              // Список призових місць та адаптивна таблиця лідерів
               if (competitionVm.competitionId != null) ...[
-                ...competitionVm.rewardTypes.map(
-                      (reward) =>
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: _buildRewardRow(
-                          "🏆",
-                          "${reward['name']}: ${reward['unit']}km",
-                        ),
-                      ),
-                ),
+                ...competitionVm.rewardTypes
+                    .asMap()
+                    .entries
+                    .map((entry) {
+                  int index = entry.key;
+                  var reward = entry.value;
+
+                  String icon;
+                  String positionText;
+
+                  if (index == 0) {
+                    icon = "🥇";
+                    positionText = "1 place";
+                  } else if (index == 1) {
+                    icon = "🥈";
+                    positionText = "2-4 places";
+                  } else {
+                    icon = "🥉";
+                    positionText = "5 place";
+                  }
+
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _buildRewardRow(
+                      icon,
+                      "$positionText — ${reward['name']}: ${reward['unit']}km",
+                    ),
+                  );
+                }),
+
                 const SizedBox(height: 24),
 
-                // Адаптивний контейнер лідерів (висота підлаштовується під кількість елементів до ~300px)
                 Container(
                   width: double.infinity,
                   constraints: const BoxConstraints(maxHeight: 300),

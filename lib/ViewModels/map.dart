@@ -13,6 +13,7 @@ import 'package:mainapp/Controllers/RentalController.dart';
 import 'package:mainapp/Controllers/ScanController.dart';
 import 'package:provider/provider.dart';
 
+import '../Controllers/ChallangeController.dart';
 import '../Controllers/Controller.dart';
 import '../Controllers/UserController.dart';
 import '../Controllers/ZoneController.dart';
@@ -131,6 +132,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   }
 
   @override
+  @override
   void initState() {
     super.initState();
     _pulseController =
@@ -148,6 +150,9 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final userController = Provider.of<UserController>(context, listen: false);
       final authController = Provider.of<AuthController>(context, listen: false);
+      final compCon = Provider.of<Challangecontroller>(context, listen: false);
+      final vehicleController = Provider.of<Controller>(context, listen: false);
+
       final userid = authController.userId;
       final token = authController.token;
 
@@ -161,9 +166,24 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
           return;
         }
       }
+
       if (mounted) {
-        context.read<Controller>().fetchVehicles();
-        context.read<Controller>().startVehiclePolling();
+        // Спочатку завантажуємо список транспортних засобів
+        await vehicleController.fetchVehicles();
+        vehicleController.startVehiclePolling();
+
+        // Якщо є доступні типи транспорту, автоматично фечимо останній челендж для першого типу
+        if (vehicleController.vehicles.isNotEmpty && token != null) {
+          final firstVehicleTypeId = vehicleController.vehicles.first
+              .vehicleTypeId;
+          await compCon.fetchLatestChallenge(firstVehicleTypeId, token);
+
+          // Якщо після цього з'явився competitionId, одразу підтягуємо результат користувача
+          if (compCon.competitionId != null && userid != null) {
+            await compCon.fetchUserResult(
+                token, userid, compCon.competitionId!);
+          }
+        }
       }
     });
   }
