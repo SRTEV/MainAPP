@@ -326,41 +326,53 @@ class _ProfileState extends State<Profile> {
                   "Your Prizes",
                   Colors.black,
                       () async {
-                    final challengeController = context.read<
-                        Challangecontroller>();
+                        final challengeController = context.read<
+                            Challangecontroller>();
                     final authController = context.read<AuthController>();
 
-                    final competitionId = challengeController.competitionId;
                     final userId = authController.userId;
                     final token = authController.token;
 
-                    if (competitionId != null && userId != null &&
-                        token != null) {
-                      // Завантажуємо результат перед переходом
-                      await challengeController.fetchUserResult(
-                          token, userId, competitionId);
+                        if (userId != null && token != null) {
+                          // Завантажуємо всі результати користувача
+                          await challengeController.fetchAllUserResults(
+                              token, userId);
 
-                      if (mounted) {
+                          // Якщо у користувача є хоча б один результат, беремо ID першого з них (або поточний)
+                          int? targetCompetitionId = challengeController
+                              .competitionId;
+
+                          if (targetCompetitionId == null &&
+                              challengeController.allUserResults.isNotEmpty) {
+                            targetCompetitionId =
+                                challengeController.allUserResults.first
+                                    .competitionId;
+                          }
+
+                          if (targetCompetitionId != null && mounted) {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (context) =>
                                 Competitionrewardspage(
                                   userId: userId,
-                                  competitionId: competitionId,
+                                  competitionId: targetCompetitionId!,
                                 ),
                           ),
                         );
-                      }
-                    } else {
-                      notification("Competition data not loaded yet.", false);
+                          } else {
+                            notification(
+                                "No competition results found.", false);
+                          }
+                        } else {
+                          notification("User data not loaded yet.", false);
                     }
                   },
                   width: 300,
                 ),
               ),
-              const SizedBox(height: 16),
-              const SizedBox(height: 50),
+              const SizedBox(height: 60),
+
               Center(
                 child: _buildActionButton(
                   "Contact to support",

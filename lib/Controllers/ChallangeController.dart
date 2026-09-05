@@ -13,6 +13,8 @@ class UserResultModel {
   final int rewardAmount;
   final String rewardName;
   final String rewardUnit;
+  final String challengeTypeName; // Додано
+  final String vehicleTypeName; // Додано
   final String? startDate;
   final String? endDate;
 
@@ -25,20 +27,24 @@ class UserResultModel {
     required this.rewardAmount,
     required this.rewardName,
     required this.rewardUnit,
+    required this.challengeTypeName,
+    required this.vehicleTypeName,
     this.startDate,
     this.endDate,
   });
 
   factory UserResultModel.fromJson(Map<String, dynamic> json) {
     return UserResultModel(
-      id: json['id'],
-      userId: json['userId'],
-      competitionId: json['competitionId'],
-      score: json['score'],
-      rank: json['rank'],
-      rewardAmount: json['rewardAmount'],
-      rewardName: json['rewardName'],
-      rewardUnit: json['rewardUnit'],
+      id: json['id'] ?? 0,
+      userId: json['userId'] ?? 0,
+      competitionId: json['competitionId'] ?? 0,
+      score: json['score'] ?? 0,
+      rank: json['rank'] ?? 0,
+      rewardAmount: json['rewardAmount'] ?? 0,
+      rewardName: json['rewardName'] ?? 'No reward',
+      rewardUnit: json['rewardUnit'] ?? '0',
+      challengeTypeName: json['challengeTypeName'] ?? 'Challenge',
+      vehicleTypeName: json['vehicleTypeName'] ?? '',
       startDate: json['startDate'],
       endDate: json['endDate'],
     );
@@ -57,7 +63,7 @@ class Challangecontroller extends ChangeNotifier {
   int? goalValue;
   int? vehicleTypeId;
   String? vehicleTypeName;
-  String? challengeTypeName; // Додано для типу челенджу з goalTypes (наприклад, Marathon)
+  String? challengeTypeName;
   bool isEnded = false;
 
   List<dynamic> goalTypes = [];
@@ -65,6 +71,7 @@ class Challangecontroller extends ChangeNotifier {
   List<dynamic> leaderboard = [];
 
   UserResultModel? currentUserResult;
+  List<UserResultModel> allUserResults = [];
 
   Future<void> fetchLatestChallenge(int vehicleTypeId, String token) async {
     isLoading = true;
@@ -95,7 +102,6 @@ class Challangecontroller extends ChangeNotifier {
         goalTypes = data['goalTypes'] ?? [];
         rewardTypes = data['rewardTypes'] ?? [];
 
-        // Витягуємо назву типу челенджу з масиву goalTypes
         if (goalTypes.isNotEmpty && goalTypes[0] is Map) {
           challengeTypeName = goalTypes[0]['name'];
         } else {
@@ -126,7 +132,7 @@ class Challangecontroller extends ChangeNotifier {
   }
 
   Future<void> _fetchLeaderboardInternal(int competitionId,
-      String token,) async {
+      String token) async {
     final url = Uri.parse(
       '$serverApi/api/UsersResult/leaderboard/$competitionId',
     );
@@ -154,11 +160,13 @@ class Challangecontroller extends ChangeNotifier {
     }
   }
 
-  Future<void> fetchUserResult(String token, int userId,
-      int challengeId) async {
+  Future<void> fetchAllUserResults(String token, int userId) async {
+    isLoading = true;
+    notifyListeners();
+
     try {
       final response = await http.get(
-        Uri.parse('$serverApi/api/Competition/UserResult/$userId/$challengeId'),
+        Uri.parse('$serverApi/api/Competition/UserResults/$userId'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -166,18 +174,40 @@ class Challangecontroller extends ChangeNotifier {
       );
 
       if (response.statusCode == 200) {
-        final Map<String, dynamic> data = json.decode(response.body);
-        currentUserResult = UserResultModel.fromJson(data);
-        notifyListeners();
+        final List<dynamic> data = json.decode(response.body);
+        allUserResults =
+            data.map((item) => UserResultModel.fromJson(item)).toList();
+
+        // Сортування: спочатку невикористані (rewardAmount > 0), потім за свіжішою датою
+        allUserResults.sort((a, b) {
+          final bool isUnusedA = a.rewardAmount > 0;
+          final bool isUnusedB = b.rewardAmount > 0;
+
+          // Якщо одна нагорода використана, а інша ні — невикористана йде вище
+          if (isUnusedA != isUnusedB) {
+            return isUnusedB ? 1 : -1;
+          }
+
+          // Якщо статус однаковий — сортуємо за датою (найновіші перші)
+          final dateA = DateTime.tryParse(a.startDate ?? '') ?? DateTime(2000);
+          final dateB = DateTime.tryParse(b.startDate ?? '') ?? DateTime(2000);
+
+          return dateB.compareTo(dateA);
+        });
+
       } else {
-        currentUserResult = null;
-        print("Failed to load user result: ${response.statusCode}");
+        allUserResults = [];
+        print("Failed to load user results: ${response.statusCode}");
       }
     } catch (e) {
-      currentUserResult = null;
-      print("Error fetching user result: $e");
+      allUserResults = [];
+      print("Error fetching user results: $e");
+    } finally {
+      isLoading = false;
+      notifyListeners();
     }
   }
+
 
   void _clearCompetitionData() {
     competitionId = null;
@@ -193,5 +223,6 @@ class Challangecontroller extends ChangeNotifier {
     rewardTypes = [];
     leaderboard = [];
     currentUserResult = null;
+    allUserResults = [];
   }
 }

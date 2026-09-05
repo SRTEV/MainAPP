@@ -61,6 +61,14 @@ class ChallangesState extends State<Challanges> {
 
     final List<String> availableTypes = vehicleController.vehicleTypes;
 
+    // Перевіряємо, чи всі нагороди (або поточний статус) мають rewardAmount == 0
+    // (Адаптуйте під структуру ваших даних, якщо у вас є конкретне поле суми нагороди у competitionVm)
+    bool isRewardUsed = competitionVm.rewardTypes.isNotEmpty &&
+        competitionVm.rewardTypes.every((reward) {
+          final amount = reward['reward_amount'] ?? reward['rewardAmount'] ?? 1;
+          return amount == 0;
+        });
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -123,25 +131,50 @@ class ChallangesState extends State<Challanges> {
                             fontWeight: FontWeight.w500,
                           ),
                         ),
-                        if (competitionVm.isEnded)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.red.shade800,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              "ENDED",
-                              style: GoogleFonts.inter(
-                                color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
+                        // Блок індикаторів у правому верхньому куті
+                        Row(
+                          children: [
+                            if (isRewardUsed)
+                              Container(
+                                margin: const EdgeInsets.only(right: 6),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.red.shade800,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  "USED",
+                                  style: GoogleFonts.inter(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                               ),
-                            ),
-                          ),
+                            if (competitionVm.isEnded)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.red.shade800,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  "ENDED",
+                                  style: GoogleFonts.inter(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
                       ],
                     ),
                     const SizedBox(height: 10),
@@ -241,7 +274,18 @@ class ChallangesState extends State<Challanges> {
                     padding: const EdgeInsets.only(bottom: 12),
                     child: _buildRewardRow(
                       icon,
-                      "$positionText — ${reward['name']}: ${reward['unit']}km",
+                          () {
+                        final name = reward['name'].toString().toLowerCase();
+                        final unit = reward['unit'] ?? '';
+
+                        if (name.contains('discount')) {
+                          return "$positionText — ${reward['name']}: $unit%";
+                        } else if (name.contains('free ride')) {
+                          return "$positionText — ${reward['name']}: Free ";
+                        } else {
+                          return "$positionText — ${reward['name']}: $unit km";
+                        }
+                      }(),
                     ),
                   );
                 }),

@@ -178,10 +178,9 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
               .vehicleTypeId;
           await compCon.fetchLatestChallenge(firstVehicleTypeId, token);
 
-          // Якщо після цього з'явився competitionId, одразу підтягуємо результат користувача
-          if (compCon.competitionId != null && userid != null) {
-            await compCon.fetchUserResult(
-                token, userid, compCon.competitionId!);
+          // Завантажуємо повний список результатів користувача без прив'язки до одного ID
+          if (userid != null) {
+            await compCon.fetchAllUserResults(token, userid);
           }
         }
       }
