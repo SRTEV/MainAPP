@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:http/http.dart' as http;
 
 class UserController extends ChangeNotifier {
@@ -19,10 +20,7 @@ class UserController extends ChangeNotifier {
   String? banReason;
   String? CardNumb;
   String? cardExpiryDate;
-
-
-
-
+  String? cardCvv; // Зберігаємо CVV в пам'яті для автоматичної оплати
 
   Future<void> fetchUserName(int id, String token) async {
     isLoading = true;
@@ -31,15 +29,13 @@ class UserController extends ChangeNotifier {
     final url = Uri.parse('$serverApi/api/User/$id');
     try {
       final response = await http.get(Uri.parse(url.toString()),
-        headers: {
-          'Authorization': 'Bearer $token',
-      });
+          headers: {
+            'Authorization': 'Bearer $token',
+          });
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        debugPrint("User data: $data");
-
-        userName =  data['name'];
+        userName = data['name'];
         balance = data['oustandingBalances'];
         hashedPassword = data['passwordHash'];
         tempId = data['id'];
@@ -53,56 +49,34 @@ class UserController extends ChangeNotifier {
           await getCardNumb(id, token);
         } else {
           CardNumb = null;
+          cardCvv = null;
         }
-
-
-
-       // debugPrint("User name loaded: $userName");
-      } else {
-        debugPrint("Failed to load user: ${response.statusCode}");
       }
-    } catch (e) {
-      debugPrint("Error fetching user: $e");
-    } finally {
+    } catch (_) {} finally {
       isLoading = false;
       notifyListeners();
     }
   }
 
-  Future<void> deleteAccount(int id, String text, String token ) async {
+  Future<void> deleteAccount(int id, String text, String token) async {
     final url = Uri.parse('$serverApi/api/User/Delete/$id');
-
     try {
-      final response = await http.post(
+      await http.post(
         url,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
         body: json.encode({'Password': text}),
-
       );
+    } catch (_) {}
+  }
 
-      if (response.statusCode == 200) {
-        debugPrint("Account successfully marked as deleted");
-      } else {
-        debugPrint("Failed to mark as deleted: ${response.statusCode} - ${response.body}");
-      }
-    } catch (e) {
-      debugPrint("Network error during soft delete: $e");
-    }
-
-    }
-
-
-
-  Future<String?> giveMeHeplPlease(String text, String type, int? VehicleId , String? email, int? userId) async {
-    if (text.isEmpty) {
-      return "Text field is empty";
-    }
+  Future<String?> giveMeHeplPlease(String text, String type, int? VehicleId,
+      String? email, int? userId) async {
+    if (text.isEmpty) return "Text field is empty";
 
     final url = Uri.parse('$serverApi/api/Report');
-
     try {
       final response = await http.post(
         url,
@@ -117,26 +91,32 @@ class UserController extends ChangeNotifier {
       );
 
       if (response.statusCode == 201) {
-        return "Report created successfully";
+        return "Success: Report created successfully";
       } else {
-        return "Failed to create report: ${response.statusCode} - ${response.body}";
+        return "Failed to create report";
       }
-    } catch (e) {
-      return "Network error during report creation: $e" ;
+    } catch (_) {
+      return "Network error";
     }
   }
 
   Future<String?> addCard(String cardNumber, String cvv, String expiryDate, String token) async {
-    String formattedDate = "";
+    final cleanCardNumber = cardNumber.replaceAll(RegExp(r'\s+'), '');
+
+    int expMonth = 0;
+    int expYear = 0;
     try {
       final parts = expiryDate.split('/');
-      formattedDate = "20${parts[1]}-${parts[0]}-01";
-    } catch (e) {
-      return "Invalid date format. Use MM/YY";
+      expMonth = int.parse(parts[0]);
+      expYear = int.parse("20${parts[1]}");
+    } catch (_) {
+      return "Invalid date format (MM/YY)";
     }
 
-    final url = Uri.parse('$serverApi/api/Card');
+    // Зберігаємо CVV в пам'яті контролера для майбутньої оплати
+    cardCvv = cvv;
 
+    final url = Uri.parse('$serverApi/api/Card');
     try {
       final response = await http.post(
         url,
@@ -145,19 +125,19 @@ class UserController extends ChangeNotifier {
           "Authorization": "Bearer $token",
         },
         body: json.encode({
-          'cardNumber': cardNumber,
-          'expiryDate': formattedDate,
-          'cvvCode': cvv,
+          'cardNumber': cleanCardNumber,
+          'expiryDate': "$expYear-${expMonth.toString().padLeft(2, '0')}-01",
+          'cvvCode': cvv, // Тепер тут зберігається справжній CVV
         }),
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         return "Success: Card added successfully";
       } else {
-        return "Failed to add card: ${response.statusCode} - ${response.body}";
+        return "Failed to save card";
       }
-    } catch (e) {
-      return "Network error: $e";
+    } catch (_) {
+      return "Network error";
     }
   }
 
@@ -173,27 +153,35 @@ class UserController extends ChangeNotifier {
       );
 
       if (response.statusCode == 204 || response.statusCode == 200) {
-        return "Success: Card deleted";
+        CardNumb = null;
+        cardExpiryDate = null;
+        cardCvv = null;
+        return "Success: Card deleted successfully";
       } else {
-        return "Error: Failed to delete card";
+        return "Failed to delete card";
       }
-    } catch (e) {
-      return "Error: $e";
+    } catch (_) {
+      return "Network error";
     }
   }
 
   Future<String?> updateCard(int userId, String token, String cardNumber,
       String cvv, String expiryDate) async {
-    String formattedDate = "";
+    final cleanCardNumber = cardNumber.replaceAll(RegExp(r'\s+'), '');
+
+    int expMonth = 0;
+    int expYear = 0;
     try {
       final parts = expiryDate.split('/');
-      formattedDate = "20${parts[1]}-${parts[0]}-01";
-    } catch (e) {
-      return "Invalid date format. Use MM/YY";
+      expMonth = int.parse(parts[0]);
+      expYear = int.parse("20${parts[1]}");
+    } catch (_) {
+      return "Invalid date format (MM/YY)";
     }
 
-    final url = Uri.parse('$serverApi/api/Card/$cardId');
+    cardCvv = cvv;
 
+    final url = Uri.parse('$serverApi/api/Card/$cardId');
     try {
       final response = await http.put(
         url,
@@ -202,27 +190,92 @@ class UserController extends ChangeNotifier {
           "Authorization": "Bearer $token",
         },
         body: json.encode({
-          'cardNumber': cardNumber,
-          'expiryDate': formattedDate,
-          'cvvCode': cvv,
+          'cardNumber': cleanCardNumber,
+          'expiryDate': "$expYear-${expMonth.toString().padLeft(2, '0')}-01",
+          'cvvCode': cvv, // Зберігаємо справжній CVV
         }),
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         return "Success: Card updated successfully";
       } else {
-        return "Failed to update card: ${response.statusCode} - ${response
-            .body}";
+        return "Failed to update card";
       }
+    } catch (_) {
+      return "Network error";
+    }
+  }
+
+  // Метод для генерації свіжого PaymentMethod на льоту перед самою оплатою
+  Future<String?> payForRental({
+    required int rentalId,
+    required int userId,
+    required String token,
+  }) async {
+    if (CardNumb == null || cardExpiryDate == null) {
+      return "No card found";
+    }
+
+    // Витягуємо місяць і рік з формату MM/YY
+    int expMonth = 0;
+    int expYear = 0;
+    try {
+      final parts = cardExpiryDate!.split('/');
+      expMonth = int.parse(parts[0]);
+      expYear = int.parse("20${parts[1]}");
+    } catch (_) {
+      return "Invalid stored card date format";
+    }
+
+    String freshPaymentMethodId;
+    try {
+      Stripe.instance.dangerouslyUpdateCardDetails(
+        CardDetails(
+          number: CardNumb!,
+          expirationMonth: expMonth,
+          expirationYear: expYear,
+          cvc: cardCvv ?? "123", // Використовуємо збережений CVV або дефолтний
+        ),
+      );
+
+      final paymentMethod = await Stripe.instance.createPaymentMethod(
+        params: PaymentMethodParams.card(
+          paymentMethodData: PaymentMethodData(
+            billingDetails: BillingDetails(email: userEmail),
+          ),
+        ),
+      );
+      freshPaymentMethodId = paymentMethod.id;
     } catch (e) {
-      return "Network error: $e";
+      return "Failed to generate payment method: $e";
+    }
+
+    // Надсилаємо свіжий токен у query-параметрі на бекенд
+    final url = Uri.parse(
+        '$serverApi/api/Payment/pay/$rentalId/$userId?paymentMethodId=$freshPaymentMethodId');
+    try {
+      final response = await http.post(
+        url,
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $token",
+        },
+      );
+
+      final data = json.decode(response.body);
+      if (response.statusCode == 200) {
+        return data['message'] ?? "Success: Payment processed successfully.";
+      } else {
+        return data['message'] ?? "Payment failed";
+      }
+    } catch (_) {
+      return "Network error during payment";
     }
   }
 
   Future<String?> updateUser(int userId, String name, String email,
       String token) async {
     final url = Uri.parse('$serverApi/api/User/ChangeAccountInfo/$userId');
-
     try {
       final response = await http.post(
         url,
@@ -239,14 +292,12 @@ class UserController extends ChangeNotifier {
       if (response.statusCode == 200) {
         return "Success: Account updated successfully";
       } else {
-        return "Failed to update account: ${response.statusCode} - ${response
-            .body}";
+        return "Failed to update account";
       }
-    } catch (e) {
-      return "Network error: $e";
+    } catch (_) {
+      return "Network error";
     }
   }
-
 
   Future<void> getCardNumb(int userId, String token) async {
     try {
@@ -260,9 +311,10 @@ class UserController extends ChangeNotifier {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-
-
         CardNumb = data['cardNumber'];
+        cardCvv =
+        data['cvvCode']; // Підтягуємо справжній CVV з бази (якщо він там є)
+
         String rawDate = data['expiryDate'] ?? '';
         if (rawDate.isNotEmpty) {
           try {
@@ -275,21 +327,7 @@ class UserController extends ChangeNotifier {
           }
         }
         notifyListeners();
-
-        debugPrint(
-            "Card details loaded: Number: $CardNumb, Expiry: $cardExpiryDate");
-      } else {
-        debugPrint("Failed to load card: ${response.body}");
       }
-    } catch (e) {
-      debugPrint("Error fetching card: $e");
-    }
+    } catch (_) {}
   }
 }
-
-
-
-
-
-
-

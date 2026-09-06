@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_stripe/flutter_stripe.dart';
+import 'package:mainapp/Controllers/PaymentController.dart' hide UserController;
 import 'package:mainapp/Controllers/RentalController.dart';
 import 'package:mainapp/Controllers/ScanController.dart';
 import 'package:provider/provider.dart';
@@ -15,6 +17,8 @@ import 'ViewModels/Login.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
+  Stripe.publishableKey = dotenv.env['PUBLIC_STRIPE']!;
+  await Stripe.instance.applySettings();
   runApp(
     MultiProvider(
       providers: [
@@ -24,7 +28,8 @@ void main() async {
         ChangeNotifierProvider(create: (_) => AuthController()),
         ChangeNotifierProvider(create: (_) => ZoneController()),
         ChangeNotifierProvider(create: (_) => ScanController()),
-        ChangeNotifierProvider(create: (_) => Challangecontroller())
+        ChangeNotifierProvider(create: (_) => Challangecontroller()),
+        ChangeNotifierProvider(create: (_) => PaymentController()),
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,

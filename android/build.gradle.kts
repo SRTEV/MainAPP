@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 allprojects {
     repositories {
         google()
@@ -17,6 +19,12 @@ subprojects {
 }
 subprojects {
     project.evaluationDependsOn(":app")
+
+    tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_17)
+        }
+    }
 }
 
 tasks.register<Delete>("clean") {

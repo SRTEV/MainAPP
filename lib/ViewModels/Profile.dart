@@ -29,7 +29,7 @@ class _ProfileState extends State<Profile> {
       final authCtrl = context.read<AuthController>();
       final userCtrl = context.read<UserController>();
       if (authCtrl.userId != null && authCtrl.token != null) {
-        userCtrl.fetchUserName(authCtrl.userId!, authCtrl.token!);
+        await userCtrl.fetchUserName(authCtrl.userId!, authCtrl.token!);
       }
 
       if (userCtrl.cardId != null &&
@@ -39,13 +39,30 @@ class _ProfileState extends State<Profile> {
     });
   }
 
-  String _maskCardNumber(String? cardNumber) {
-    if (cardNumber == null) {
-      return "****************";
+  Future<void> _refreshUserData() async {
+    final authCtrl = context.read<AuthController>();
+    final userCtrl = context.read<UserController>();
+    if (authCtrl.userId != null && authCtrl.token != null) {
+      await userCtrl.fetchUserName(authCtrl.userId!, authCtrl.token!);
+      if (userCtrl.cardId != null) {
+        await userCtrl.getCardNumb(authCtrl.userId!, authCtrl.token!);
+      } else {
+        userCtrl.CardNumb = null;
+      }
+      if (mounted) setState(() {});
     }
-    String first4 = cardNumber.substring(0, 4);
-    String last4 = cardNumber.substring(cardNumber.length - 4);
-    return "$first4****$last4";
+  }
+
+  String _maskCardNumber(String? cardNumber) {
+    if (cardNumber == null || cardNumber
+        .trim()
+        .length < 8) {
+      return "•••• •••• •••• ••••";
+    }
+    String cleaned = cardNumber.trim();
+    String first4 = cleaned.substring(0, 4);
+    String last4 = cleaned.substring(cleaned.length - 4);
+    return "$first4 •••• •••• $last4";
   }
 
   void notification(String message, bool isSuccess) {
@@ -171,11 +188,9 @@ class _ProfileState extends State<Profile> {
                   );
 
                   if (result != null && result is String && mounted) {
-                    bool isSuccess = result.contains("Success");
+                    bool isSuccess = result.toLowerCase().contains("success");
                     if (isSuccess) {
-                      final authCtrl = context.read<AuthController>();
-                      await context.read<UserController>().fetchUserName(
-                          authCtrl.userId!, authCtrl.token!);
+                      await _refreshUserData();
                     }
                     WidgetsBinding.instance.addPostFrameCallback((_) {
                       notification(result, isSuccess);
@@ -224,13 +239,10 @@ class _ProfileState extends State<Profile> {
                           );
 
                           if (result != null && result is String && mounted) {
-                            bool isSuccess = result.contains("Success");
+                            bool isSuccess = result.toLowerCase().contains(
+                                "success");
                             if (isSuccess) {
-                              final authCtrl = context.read<AuthController>();
-                              await context
-                                  .read<UserController>()
-                                  .fetchUserName(
-                                  authCtrl.userId!, authCtrl.token!);
+                              await _refreshUserData();
                             }
                             WidgetsBinding.instance.addPostFrameCallback((_) {
                               notification(result, isSuccess);
@@ -247,7 +259,6 @@ class _ProfileState extends State<Profile> {
                         "Remove card",
                         Colors.black,
                             () {
-                              // Зберігаємо посилання заздалегідь
                               final dialogContext = context;
                               final userCtrl = context.read<UserController>();
                               final authCtrl = context.read<AuthController>();
@@ -282,7 +293,7 @@ class _ProfileState extends State<Profile> {
                                       ),
                                     ),
                                     onPressed: () async {
-                                      Navigator.pop(ctx); // Закриваємо діалог
+                                      Navigator.pop(ctx);
 
                                       int cardId = int.parse(
                                           userModel.cardId.toString());
@@ -291,13 +302,11 @@ class _ProfileState extends State<Profile> {
 
                                       if (mounted) {
                                         bool isSuccess = message != null &&
-                                            message.contains("Success");
+                                            message.toLowerCase().contains(
+                                                "success");
 
                                         if (isSuccess) {
-                                          // Оновлюємо дані юзера, щоб cardId став null і зникли поля карти
-                                          await userCtrl.fetchUserName(
-                                              authCtrl.userId!,
-                                              authCtrl.token!);
+                                          await _refreshUserData();
                                         }
 
                                         notification(
@@ -334,11 +343,9 @@ class _ProfileState extends State<Profile> {
                     final token = authController.token;
 
                         if (userId != null && token != null) {
-                          // Завантажуємо всі результати користувача
                           await challengeController.fetchAllUserResults(
                               token, userId);
 
-                          // Якщо у користувача є хоча б один результат, беремо ID першого з них (або поточний)
                           int? targetCompetitionId = challengeController
                               .competitionId;
 
@@ -392,7 +399,7 @@ class _ProfileState extends State<Profile> {
                     );
 
                     if (result != null && result is String && mounted) {
-                      bool isSuccess = result.contains("success");
+                      bool isSuccess = result.toLowerCase().contains("success");
                       WidgetsBinding.instance.addPostFrameCallback((_) {
                         notification(result, isSuccess);
                       });
@@ -404,7 +411,6 @@ class _ProfileState extends State<Profile> {
 
               const SizedBox(height: 16),
 
-              // Рядок з маленькими кнопками Edit profile та Edit password
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -420,7 +426,8 @@ class _ProfileState extends State<Profile> {
                         );
 
                         if (result != null && result is String && mounted) {
-                          bool isSuccess = result.contains("Success");
+                          bool isSuccess = result.toLowerCase().contains(
+                              "success");
                           if (isSuccess) {
                             final authCtrl = context.read<AuthController>();
                             await context.read<UserController>().fetchUserName(
@@ -451,7 +458,8 @@ class _ProfileState extends State<Profile> {
                         );
 
                         if (result != null && result is String && mounted) {
-                          bool isSuccess = result.contains("success");
+                          bool isSuccess = result.toLowerCase().contains(
+                              "success");
                           WidgetsBinding.instance.addPostFrameCallback((_) {
                             notification(result, isSuccess);
                           });
@@ -466,7 +474,6 @@ class _ProfileState extends State<Profile> {
 
               const SizedBox(height: 80),
 
-              // Кнопка Log out
               Center(
                 child: _buildActionButton(
                   "Log out",
@@ -489,7 +496,6 @@ class _ProfileState extends State<Profile> {
 
               const SizedBox(height: 16),
 
-              // Кнопка Delete account
               Center(
                 child: _buildActionButton(
                   "Delete account",
@@ -514,8 +520,7 @@ class _ProfileState extends State<Profile> {
     );
   }
 
-  Widget _buildActionButton(String text,
-      Color borderColor,
+  Widget _buildActionButton(String text, Color borderColor,
       VoidCallback onPressed, {
         double? width,
         double height = 48,

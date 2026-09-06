@@ -24,6 +24,7 @@ import 'History.dart';
 import 'Profile.dart';
 import 'ScannerQr.dart';
 
+
 class MapPage extends StatefulWidget {
   const MapPage({super.key});
   @override
@@ -168,7 +169,6 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       }
 
       if (mounted) {
-        // Спочатку завантажуємо список транспортних засобів
         await vehicleController.fetchVehicles();
         vehicleController.startVehiclePolling();
 
@@ -857,33 +857,52 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                         ),
                         elevation: 0,
                       ),
+                      // Усередині _buildVehicleRentActiveWidget -> ElevatedButton для "End the trip":
                       onPressed: () async {
-                        final token = context
-                            .read<AuthController>()
-                            .token;
+                        final authController = context.read<AuthController>();
+                        final userController = context.read<
+                            UserController>(); // Достаємо UserController, щоб дістати дані картки
+                        final token = authController.token;
+                        final userId = authController.userId;
 
-                        if (token == null) {
+                        if (token == null || userId == null) {
                           _showTopNotification(
                               scaffoldContext, "Authorization error!");
                           return;
                         }
 
-                        final rentalId =
-                            context
-                                .read<RentalController>()
-                                .RentalId;
-
+                        final rentalId = context
+                            .read<RentalController>()
+                            .RentalId;
                         if (rentalId == null) {
                           _showTopNotification(
                               scaffoldContext, "Active rental ID not found!");
                           return;
                         }
 
+                        // Перевіряємо, чи є у користувача збережена картка в профілі
+                        if (userController.CardNumb == null || userController
+                            .cardExpiryDate == null) {
+                          _showTopNotification(scaffoldContext,
+                              "Please add a payment card first!");
+                          return;
+                        }
+
+                        final paymentMessage = await userController
+                            .payForRental(
+                          rentalId: rentalId,
+                          userId: userId,
+                          token: token,
+                        );
+
+                        // Виводимо сповіщення про результат платежу
+                        if (paymentMessage != null) {
+                          _showTopNotification(scaffoldContext, paymentMessage);
+                        }
                         String? errorMessage = await context
                             .read<RentalController>()
                             .endRental(
                           rentalId: rentalId,
-
                           token: token,
                         );
 
@@ -896,17 +915,14 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
 
                           context.read<Controller>().fetchVehicles();
                           context.read<ZoneController>().clearZones();
-
-                          _showTopNotification(
-                              scaffoldContext, "Trip ended successfully!");
                         } else {
                           _showTopNotification(scaffoldContext, errorMessage);
                         }
                       },
                       child: const Text(
                         "End the trip",
-                        style: TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold),
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight
+                            .bold),
                       ),
                     ),
                   ),
