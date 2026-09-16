@@ -880,7 +880,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                           return;
                         }
 
-                        // Перевіряємо, чи є у користувача збережена картка в профілі
+
                         if (userController.CardNumb == null || userController
                             .cardExpiryDate == null) {
                           _showTopNotification(scaffoldContext,
@@ -895,7 +895,6 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                           token: token,
                         );
 
-                        // Виводимо сповіщення про результат платежу
                         if (paymentMessage != null) {
                           _showTopNotification(scaffoldContext, paymentMessage);
                         }

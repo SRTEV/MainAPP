@@ -205,8 +205,6 @@ class UserController extends ChangeNotifier {
       return "Network error";
     }
   }
-
-  // Метод для генерації свіжого PaymentMethod на льоту перед самою оплатою
   Future<String?> payForRental({
     required int rentalId,
     required int userId,
@@ -216,7 +214,6 @@ class UserController extends ChangeNotifier {
       return "No card found";
     }
 
-    // Витягуємо місяць і рік з формату MM/YY
     int expMonth = 0;
     int expYear = 0;
     try {
@@ -250,7 +247,6 @@ class UserController extends ChangeNotifier {
       return "Failed to generate payment method: $e";
     }
 
-    // Надсилаємо свіжий токен у query-параметрі на бекенд
     final url = Uri.parse(
         '$serverApi/api/Payment/pay/$rentalId/$userId?paymentMethodId=$freshPaymentMethodId');
     try {

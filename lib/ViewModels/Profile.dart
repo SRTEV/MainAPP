@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mainapp/Controllers/ChallangeController.dart';
 import 'package:provider/provider.dart';
-
+import '../Controllers/PaymentController.dart';
 import '../Controllers/AuthController.dart';
 import '../Controllers/UserController.dart';
 import 'AddCart.dart';
@@ -158,8 +158,29 @@ class _ProfileState extends State<Profile> {
                 _buildActionButton(
                   "Pay outstanding balance",
                   Colors.red,
-                      () {
-                    debugPrint("Pay button pressed");
+                      () async { // Додано async
+                    final authCtrl = context.read<AuthController>();
+                    final paymentCtrl = context.read<PaymentController>();
+                    final token = authCtrl.token;
+                    final userId = authCtrl.userId;
+
+                    if (token != null && userId != null) {
+                      // Додано await, щоб дочекатися відповіді від сервера
+                      bool success = await paymentCtrl.payOutstandingBalance(
+                        userId,
+                        token,
+                        null,
+                      );
+
+                      // Виводимо сповіщення про результат
+                      if (mounted) {
+                        notification(paymentCtrl.message, success);
+                        if (success) {
+                          // Оновлюємо дані користувача (баланс стане 0)
+                          await _refreshUserData();
+                        }
+                      }
+                    }
                   },
                   width: 260,
                   height: 30,
