@@ -15,6 +15,7 @@ import 'package:provider/provider.dart';
 
 import '../Controllers/ChallangeController.dart';
 import '../Controllers/Controller.dart';
+import '../Controllers/PaymentController.dart';
 import '../Controllers/UserController.dart';
 import '../Controllers/ZoneController.dart';
 import 'Blocked.dart';
@@ -887,12 +888,20 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                               "Please add a payment card first!");
                           return;
                         }
+                        final paymentController = context.read<
+                            PaymentController>();
+                        final userCtrl = context.read<UserController>();
+                        final authCtrl = context.read<AuthController>();
 
-                        final paymentMessage = await userController
+                        final paymentMessage = await paymentController
                             .payForRental(
-                          rentalId: rentalId,
-                          userId: userId,
-                          token: token,
+                          rentalId,
+                          authCtrl.userId!,
+                          authCtrl.token!,
+                          userCtrl.CardNumb,
+                          userCtrl.cardExpiryDate,
+                          userCtrl.cardCvv,
+                          userCtrl.userEmail,
                         );
 
                         if (paymentMessage != null) {

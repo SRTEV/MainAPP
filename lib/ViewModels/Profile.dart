@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mainapp/Controllers/ChallangeController.dart';
 import 'package:provider/provider.dart';
-import '../Controllers/PaymentController.dart';
+
 import '../Controllers/AuthController.dart';
+import '../Controllers/PaymentController.dart';
 import '../Controllers/UserController.dart';
 import 'AddCart.dart';
 import 'ChangeCard.dart';
@@ -65,52 +66,78 @@ class _ProfileState extends State<Profile> {
     return "$first4 •••• •••• $last4";
   }
 
-  void notification(String message, bool isSuccess) {
+  void _showTopNotification(BuildContext context, String message) {
     if (!mounted) return;
+    bool isSuccess = message.toLowerCase().contains("success");
 
-    final messenger = ScaffoldMessenger.of(context);
-    messenger.hideCurrentSnackBar();
-    final topPadding = MediaQuery
-        .of(context)
-        .padding
-        .top;
+    OverlayState overlayState = Overlay.of(context);
+    late OverlayEntry overlayEntry;
 
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(
-          message,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 14,
-          ),
-        ),
-        backgroundColor: isSuccess ? Colors.green.shade600 : Colors.red
-            .shade600,
-        behavior: SnackBarBehavior.floating,
-        margin: EdgeInsets.only(
-          top: topPadding + 5,
-          left: 20,
-          right: 20,
-          bottom: MediaQuery
-              .of(context)
-              .size
-              .height - topPadding - 70,
-        ),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(15),
-        ),
-        elevation: 10,
-        duration: const Duration(seconds: 4),
-        dismissDirection: DismissDirection.horizontal,
+    overlayEntry = OverlayEntry(
+      builder: (context) =>
+          Positioned(
+            top: MediaQuery
+                .of(context)
+                .padding
+                .top + 10,
+            left: 20,
+            right: 20,
+            child: Material(
+              color: Colors.transparent,
+              child: TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0.0, end: 1.0),
+                duration: const Duration(milliseconds: 300),
+                builder: (context, value, child) {
+                  return Transform.translate(
+                    offset: Offset(0, -20 * (1 - value)),
+                    child: Opacity(
+                      opacity: value,
+                      child: child,
+                    ),
+                  );
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: isSuccess ? Colors.green.shade600 : Colors.red
+                        .shade600,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.2),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Text(
+                    message,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              ),
+            ),
       ),
     );
+
+    overlayState.insert(overlayEntry);
+
+    Future.delayed(const Duration(seconds: 4), () {
+      overlayEntry.remove();
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final userModel = context.watch<UserController>();
+    final authCtrl = context.watch<
+        AuthController>(); // Слідкуємо за станом AuthController
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -158,25 +185,24 @@ class _ProfileState extends State<Profile> {
                 _buildActionButton(
                   "Pay outstanding balance",
                   Colors.red,
-                      () async { // Додано async
-                    final authCtrl = context.read<AuthController>();
-                    final paymentCtrl = context.read<PaymentController>();
+                      () async {
                     final token = authCtrl.token;
                     final userId = authCtrl.userId;
-
+                    final paymentCtrl = context.read<PaymentController>();
+                    final userCtrl = context.read<UserController>();
                     if (token != null && userId != null) {
-                      // Додано await, щоб дочекатися відповіді від сервера
                       bool success = await paymentCtrl.payOutstandingBalance(
-                        userId,
-                        token,
-                        null,
+                        authCtrl.userId!, // 1. userId
+                        authCtrl.token!, // 2. token
+                        userCtrl.CardNumb, // 3. cardNum
+                        userCtrl.cardExpiryDate, // 4. cardExpDate
+                        userCtrl.cardCvv, // 5. cardCvv
+                        userCtrl.userEmail, // 6. userEmail
                       );
 
-                      // Виводимо сповіщення про результат
                       if (mounted) {
-                        notification(paymentCtrl.message, success);
+                        _showTopNotification(context, paymentCtrl.message);
                         if (success) {
-                          // Оновлюємо дані користувача (баланс стане 0)
                           await _refreshUserData();
                         }
                       }
@@ -214,7 +240,7 @@ class _ProfileState extends State<Profile> {
                       await _refreshUserData();
                     }
                     WidgetsBinding.instance.addPostFrameCallback((_) {
-                      notification(result, isSuccess);
+                      _showTopNotification(context, result);
                     });
                   }
                 }, width: double.infinity),
@@ -266,7 +292,7 @@ class _ProfileState extends State<Profile> {
                               await _refreshUserData();
                             }
                             WidgetsBinding.instance.addPostFrameCallback((_) {
-                              notification(result, isSuccess);
+                              _showTopNotification(context, result);
                             });
                           }
                         },
@@ -282,7 +308,6 @@ class _ProfileState extends State<Profile> {
                             () {
                               final dialogContext = context;
                               final userCtrl = context.read<UserController>();
-                              final authCtrl = context.read<AuthController>();
 
                           showDialog(
                             context: dialogContext,
@@ -330,8 +355,8 @@ class _ProfileState extends State<Profile> {
                                           await _refreshUserData();
                                         }
 
-                                        notification(
-                                            message ?? "Done", isSuccess);
+                                        _showTopNotification(
+                                            context, message ?? "Done");
                                       }
                                     },
                                     child: const Text("Delete",
@@ -350,7 +375,23 @@ class _ProfileState extends State<Profile> {
                 ),
               ],
 
-              const SizedBox(height: 120),
+              const SizedBox(height: 85),
+
+              if (authCtrl.isRepairman) ...[
+                Center(
+                  child: _buildActionButton(
+                    "Repairman mode",
+                    Colors.black,
+                        () {
+                      authCtrl.toggleRepairmanMode();
+                      Navigator.pop(context);
+                    },
+                    width: 300,
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+
               Center(
                 child: _buildActionButton(
                   "Your Prizes",
@@ -358,10 +399,8 @@ class _ProfileState extends State<Profile> {
                       () async {
                         final challengeController = context.read<
                             Challangecontroller>();
-                    final authController = context.read<AuthController>();
-
-                    final userId = authController.userId;
-                    final token = authController.token;
+                        final userId = authCtrl.userId;
+                        final token = authCtrl.token;
 
                         if (userId != null && token != null) {
                           await challengeController.fetchAllUserResults(
@@ -389,11 +428,12 @@ class _ProfileState extends State<Profile> {
                           ),
                         );
                           } else {
-                            notification(
-                                "No competition results found.", false);
+                            _showTopNotification(
+                                context, "No competition results found.");
                           }
                         } else {
-                          notification("User data not loaded yet.", false);
+                          _showTopNotification(
+                              context, "User data not loaded yet.");
                     }
                   },
                   width: 300,
@@ -422,7 +462,7 @@ class _ProfileState extends State<Profile> {
                     if (result != null && result is String && mounted) {
                       bool isSuccess = result.toLowerCase().contains("success");
                       WidgetsBinding.instance.addPostFrameCallback((_) {
-                        notification(result, isSuccess);
+                        _showTopNotification(context, result);
                       });
                     }
                   },
@@ -450,12 +490,11 @@ class _ProfileState extends State<Profile> {
                           bool isSuccess = result.toLowerCase().contains(
                               "success");
                           if (isSuccess) {
-                            final authCtrl = context.read<AuthController>();
                             await context.read<UserController>().fetchUserName(
                                 authCtrl.userId!, authCtrl.token!);
                           }
                           WidgetsBinding.instance.addPostFrameCallback((_) {
-                            notification(result, isSuccess);
+                            _showTopNotification(context, result);
                           });
                         }
                       },
@@ -469,20 +508,17 @@ class _ProfileState extends State<Profile> {
                       "Edit password",
                       Colors.black,
                           () async {
-                        final authController = Provider.of<AuthController>(
-                            context, listen: false);
-
                         final result = await Navigator.push(
                           context,
                           MaterialPageRoute(builder: (context) =>
-                              Editpassword(token: authController.token!)),
+                              Editpassword(token: authCtrl.token!)),
                         );
 
                         if (result != null && result is String && mounted) {
                           bool isSuccess = result.toLowerCase().contains(
                               "success");
                           WidgetsBinding.instance.addPostFrameCallback((_) {
-                            notification(result, isSuccess);
+                            _showTopNotification(context, result);
                           });
                         }
                       },
@@ -500,9 +536,8 @@ class _ProfileState extends State<Profile> {
                   "Log out",
                   Colors.grey,
                       () {
-                    final auth = context.read<AuthController>();
-                    auth.clearMessage();
-                    auth.clearSomeData();
+                        authCtrl.clearMessage();
+                        authCtrl.clearSomeData();
                     Navigator.pushAndRemoveUntil(
                       context,
                       MaterialPageRoute(builder: (context) => const Login()),
@@ -522,7 +557,7 @@ class _ProfileState extends State<Profile> {
                   "Delete account",
                   Colors.red,
                       () {
-                    context.read<AuthController>().clearMessage();
+                        authCtrl.clearMessage();
                     Navigator.push(
                       context,
                       MaterialPageRoute(

@@ -3,29 +3,40 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
+import 'package:mainapp/Router.dart';
 
-import '../ViewModels/map.dart';
 
 class AuthController extends ChangeNotifier {
   String message = '';
   String? token;
   int? userId;
+  String? userRole;
+  bool RMode = false;
   Color emailBorderColor = Colors.black;
   Color passwordBorderColor = Colors.black;
   Color nameBorderColor = Colors.black;
-   Color confirmBorderColor = Colors.black;
+  Color confirmBorderColor = Colors.black;
   String? Email;
-
-
   final String emailRegex = r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$';
-  String get serverApi => dotenv.env['SERVER'] ?? 'localhost';
+
+  String get serverApi => dotenv.env['SERVER']!;
+
+  bool get isRepairman => userRole?.toLowerCase() == 'repairman';
+
+  void toggleRepairmanMode() {
+    if (isRepairman) {
+      RMode = !RMode;
+      notifyListeners();
+    }
+  }
+
 
   void setMessage(String msg, {bool isError = false}) {
     message = msg;
     notifyListeners();
   }
 
- void clearMessage(){
+  void clearMessage() {
     message ='';
     emailBorderColor = Colors.black;
     passwordBorderColor = Colors.black;
@@ -33,10 +44,13 @@ class AuthController extends ChangeNotifier {
     confirmBorderColor = Colors.black;
     notifyListeners();
   }
+
   void clearSomeData() {
     token = null;
     userId = null;
     Email = null;
+    userRole = null;
+    RMode = false;
     notifyListeners();
   }
 
@@ -95,7 +109,15 @@ class AuthController extends ChangeNotifier {
         final data = json.decode(response.body);
         token = data['token'];
         userId = data['id'];
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const MapPage()));
+        userRole =
+            data['role'] ?? 'User'; // Зберігаємо роль, яку повернув бекенд
+        RMode = false;
+
+        // Перенаправлення через MainRouter, який обробить права та інтерфейс
+        Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const RoleRouter())
+        );
       } else {
         setMessage(json.decode(response.body)['message'] ?? "Registration failed", isError: true);
       }
@@ -139,17 +161,22 @@ class AuthController extends ChangeNotifier {
         final data = json.decode(response.body);
         token = data['token'];
         userId = data['id'];
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const MapPage()));
+        userRole = data['role'] ?? 'User'; // Зберігаємо отриману з бекенду роль
+        RMode = isRepairman;
+        debugPrint(
+            "Role: $userRole , RMode: $RMode"); // Скидаємо режим на клієнтський за замовчуванням
+
+        Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const RoleRouter())
+        );
       } else {
         setMessage(json.decode(response.body)['message'] ?? "Login failed", isError: true);
-
       }
     } catch (e) {
       setMessage("Connection failed", isError: true);
     }
   }
-
-
 
   Future<void> ResetPassword(BuildContext context, String email) async {
     clearMessage();
@@ -262,8 +289,7 @@ class AuthController extends ChangeNotifier {
 
     try {
       final response = await http.post(
-        Uri.parse(
-            '$serverApi/api/User/ChangeLoggedPassword/$userId'),
+        Uri.parse('$serverApi/api/User/ChangeLoggedPassword/$userId'),
         headers: {
           "Content-Type": "application/json",
           "Authorization": "Bearer $token",

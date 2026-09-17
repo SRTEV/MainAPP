@@ -2,7 +2,6 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:http/http.dart' as http;
 
 class UserController extends ChangeNotifier {
@@ -192,7 +191,7 @@ class UserController extends ChangeNotifier {
         body: json.encode({
           'cardNumber': cleanCardNumber,
           'expiryDate': "$expYear-${expMonth.toString().padLeft(2, '0')}-01",
-          'cvvCode': cvv, // Зберігаємо справжній CVV
+          'cvvCode': cvv,
         }),
       );
 
@@ -205,69 +204,7 @@ class UserController extends ChangeNotifier {
       return "Network error";
     }
   }
-  Future<String?> payForRental({
-    required int rentalId,
-    required int userId,
-    required String token,
-  }) async {
-    if (CardNumb == null || cardExpiryDate == null) {
-      return "No card found";
-    }
 
-    int expMonth = 0;
-    int expYear = 0;
-    try {
-      final parts = cardExpiryDate!.split('/');
-      expMonth = int.parse(parts[0]);
-      expYear = int.parse("20${parts[1]}");
-    } catch (_) {
-      return "Invalid stored card date format";
-    }
-
-    String freshPaymentMethodId;
-    try {
-      Stripe.instance.dangerouslyUpdateCardDetails(
-        CardDetails(
-          number: CardNumb!,
-          expirationMonth: expMonth,
-          expirationYear: expYear,
-          cvc: cardCvv ?? "123", // Використовуємо збережений CVV або дефолтний
-        ),
-      );
-
-      final paymentMethod = await Stripe.instance.createPaymentMethod(
-        params: PaymentMethodParams.card(
-          paymentMethodData: PaymentMethodData(
-            billingDetails: BillingDetails(email: userEmail),
-          ),
-        ),
-      );
-      freshPaymentMethodId = paymentMethod.id;
-    } catch (e) {
-      return "Failed to generate payment method: $e";
-    }
-
-    final url = Uri.parse(
-        '$serverApi/api/Payment/pay/$rentalId/$userId?paymentMethodId=$freshPaymentMethodId');
-    try {
-      final response = await http.post(
-        url,
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": "Bearer $token",
-        },
-      );
-
-      final data = json.decode(response.body);
-      if (response.statusCode == 200) {
-        return data['message'] ?? "Success: Payment processed successfully.";
-      } else {
-        return data['message'] ?? "Payment failed";
-      }
-    } catch (_) {
-      return "Network error during payment";
-    }
-  }
 
   Future<String?> updateUser(int userId, String name, String email,
       String token) async {
@@ -309,7 +246,7 @@ class UserController extends ChangeNotifier {
         final data = jsonDecode(response.body);
         CardNumb = data['cardNumber'];
         cardCvv =
-        data['cvvCode']; // Підтягуємо справжній CVV з бази (якщо він там є)
+        data['cvvCode'];
 
         String rawDate = data['expiryDate'] ?? '';
         if (rawDate.isNotEmpty) {
