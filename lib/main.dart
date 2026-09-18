@@ -4,16 +4,15 @@ import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:mainapp/Controllers/PaymentController.dart' hide UserController;
 import 'package:mainapp/Controllers/RentalController.dart';
 import 'package:mainapp/Controllers/ScanController.dart';
-import 'package:mainapp/Router.dart' hide RoleRouter;
 import 'package:provider/provider.dart';
+
 import 'Controllers/AuthController.dart';
 import 'Controllers/ChallangeController.dart';
 import 'Controllers/Controller.dart';
 import 'Controllers/UserController.dart';
 import 'Controllers/ZoneController.dart';
-import 'ViewModels/ChangePasswordReset.dart';
-import 'ViewModels/Login.dart';
 import 'Router.dart';
+import 'ViewModels/ChangePasswordReset.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -42,7 +41,7 @@ void main() async {
             final token = uri.queryParameters['token'];
 
             return MaterialPageRoute(
-              builder: (context) => ChangePasswordReset((token: token ?? ""),
+              builder: (context) => ChangePasswordReset(token: token ?? ""),
             );
           }
           return null;
