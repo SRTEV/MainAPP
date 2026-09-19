@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+
 import '../Controllers/AuthController.dart';
-import 'ContactNonLogged.dart';
+import '../Modules/Notifications.dart'; // Імпортуємо нотифікації
+import 'ContactSupport.dart';
 import 'Register.dart';
 import 'ResetPassword.dart';
 
@@ -99,7 +101,6 @@ class _LoginState extends State<Login> {
                   ),
                 ),
 
-
                 const SizedBox(height: 10),
                 if (viewModel.message.isNotEmpty)
                   Text(
@@ -157,8 +158,9 @@ class _LoginState extends State<Login> {
                         onPressed: () {
                           _hideKeyboard();
                           Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => const Resetpassword()),
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) => const Resetpassword()),
                           );
                         },
                         style: TextButton.styleFrom(
@@ -181,18 +183,16 @@ class _LoginState extends State<Login> {
                       final result = await Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => ContactNonLogged(),
+                          builder: (context) => const Contactsupport(),
                         ),
                       );
-                      if (result != null && result is String) {
-                        viewModel.setMessage(result);
+                      if (result != null && result is String && mounted) {
+                        showTopNotification(context, result);
                       }
-
                     },
                     child: const Text("Contact to support", style: TextStyle(color: Colors.grey)),
                   ),
                 ),
-
               ],
             ),
           ),

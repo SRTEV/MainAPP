@@ -12,9 +12,11 @@ class Blocked extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<UserController>(
       builder: (context, userCtrl, child) {
-        final userName = userCtrl.userName ?? "Jan";
-        final reason =
-            userCtrl.banReason ?? "Inappropriate use of the monowheel";
+        final userName = userCtrl.userName ?? "User";
+
+        // Перевіряємо, чи дійсно є причина блокування з бази даних
+        final String? rawReason = userCtrl.banReason;
+        final bool hasReason = rawReason != null && rawReason.trim().isNotEmpty;
 
         return Scaffold(
           backgroundColor: Colors.white,
@@ -26,12 +28,9 @@ class Blocked extends StatelessWidget {
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
-                // ВАЖЛИВО: Вирівнювання елементів стовпця по центру по горизонталі
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   const Spacer(flex: 1),
-                  // Вітання (HI, [userName])
-                  // Гарантоване центрування за допомогою Center
                   Center(
                     child: Text(
                       "HI, $userName",
@@ -45,8 +44,6 @@ class Blocked extends StatelessWidget {
                     ),
                   ),
                   const Spacer(flex: 2),
-
-                  // Повідомлення про блок
                   const Text(
                     "Your account was blocked",
                     style: TextStyle(
@@ -56,27 +53,25 @@ class Blocked extends StatelessWidget {
                     ),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 35),
 
-                  // Причина блокування
-                  // Обгортаємо в Center, щоб він не притискався до краю
-                  Center(
-                    child: Text(
-                      "Reason: $reason",
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w400,
-                        color: Colors.black,
-                        height: 1.4,
+                  // Показуємо блок причини лише тоді, коли вона є в базі
+                  if (hasReason) ...[
+                    const SizedBox(height: 35),
+                    Center(
+                      child: Text(
+                        "Reason: $rawReason",
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w400,
+                          color: Colors.black,
+                          height: 1.4,
+                        ),
+                        textAlign: TextAlign.center,
                       ),
-                      textAlign: TextAlign.center,
                     ),
-                  ),
+                  ],
 
                   const Spacer(flex: 3),
-
-                  // Чорна кнопка "OK" з переходом на логін
-                  // Вона вже має фіксовану ширину, тому центрується автоматично в стовпці
                   SizedBox(
                     width: 140,
                     height: 45,

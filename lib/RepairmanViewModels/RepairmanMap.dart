@@ -14,7 +14,10 @@ import 'package:provider/provider.dart';
 import '../Controllers/Controller.dart';
 import '../Controllers/UserController.dart';
 import '../Controllers/ZoneController.dart';
+import '../Modules/Notifications.dart';
 import '../ViewModels/Blocked.dart';
+import '../ViewModels/ContactSupport.dart';
+import '../ViewModels/ScannerQr.dart';
 import 'RepairmanProfilePage.dart';
 
 class Repairmanmap extends StatefulWidget {
@@ -47,7 +50,9 @@ class RepairmanmapState extends State<Repairmanmap>
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
 
-  IconData _getBatteryIcon(int level) {
+  IconData _getBatteryIcon(dynamic levelVal) {
+    int level = levelVal is num ? levelVal.toInt() : int.tryParse(
+        levelVal?.toString() ?? '0') ?? 0;
     if (level >= 80) return Icons.battery_full;
     if (level >= 60) return Icons.battery_6_bar;
     if (level >= 40) return Icons.battery_4_bar;
@@ -211,9 +216,10 @@ class RepairmanmapState extends State<Repairmanmap>
     if (index == 0) {
       debugPrint("Admin calls button clicked");
     } else if (index == 1) {
-      debugPrint("Start work button clicked");
+      Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const ScannerQr()));
     } else if (index == 2) {
-      debugPrint("Account button clicked");
       Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => const RepairmanProfile()));
@@ -428,7 +434,7 @@ class RepairmanmapState extends State<Repairmanmap>
       floatingActionButton: AnimatedPadding(
         duration: const Duration(milliseconds: 200),
         padding: EdgeInsets.only(
-          bottom: (_selectedVehicle != null) ? 220.0 : 10.0,
+          bottom: (_selectedVehicle != null) ? 260.0 : 10.0,
         ),
         child: FloatingActionButton(
           backgroundColor: Colors.black,
@@ -521,6 +527,12 @@ class RepairmanmapState extends State<Repairmanmap>
   }
 
   Widget _buildVehicleInfoWidget(BuildContext context, dynamic vehicle) {
+    bool needsCheck = vehicle.status == 'NeedCheck';
+
+    num batteryLevel = vehicle.batteryLevel is num
+        ? vehicle.batteryLevel
+        : num.tryParse(vehicle.batteryLevel?.toString() ?? '0') ?? 0;
+
     return Consumer<Controller>(
       builder: (context, vehicleController, child) {
         return Align(
@@ -531,35 +543,28 @@ class RepairmanmapState extends State<Repairmanmap>
             child: Container(
               padding: const EdgeInsets.all(15),
               decoration: BoxDecoration(
-                color: const Color(0xFFD9D9D9),
+                color: needsCheck ? const Color(0xFFFF8A8A) : const Color(
+                    0xFFD9D9D9),
                 borderRadius: BorderRadius.circular(20),
+                border: needsCheck
+                    ? Border.all(color: Colors.black, width: 2)
+                    : null,
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        "${vehicle.type} ${vehicle.model ?? vehicle.id}",
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          fontStyle: FontStyle.italic,
-                        ),
+                  Center(
+                    child: Text(
+                      "${vehicle.type} ${vehicle.model ?? vehicle.id}",
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        fontStyle: FontStyle.italic,
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.close),
-                        onPressed: () {
-                          setState(() {
-                            _selectedVehicle = null;
-                          });
-                          context.read<ZoneController>().clearZones();
-                        },
-                      ),
-                    ],
+                    ),
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 12),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -568,41 +573,131 @@ class RepairmanmapState extends State<Repairmanmap>
                         children: [
                           Row(
                             children: [
-                              Icon(_getBatteryIcon(vehicle.batteryLevel),
-                                  size: 40),
+                              Icon(_getBatteryIcon(batteryLevel), size: 40),
                               const SizedBox(width: 8),
                               Text(
-                                "${vehicle.batteryLevel}%",
+                                "$batteryLevel%",
                                 style: const TextStyle(
-                                    fontSize: 32, fontWeight: FontWeight.bold),
+                                    fontSize: 32, fontWeight: FontWeight.w900),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 4),
+                          if (needsCheck) ...[
+                            const SizedBox(height: 6),
+                            Text(
+                              "Battery life ${(batteryLevel * 0.21)
+                                  .toStringAsFixed(0)} KM",
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.black,
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: 6),
                           Text(
-                            "Status: ${vehicle.status}",
+                            needsCheck
+                                ? "Status: Needs to be checked"
+                                : "Status: ${vehicle.status}",
                             style: const TextStyle(
-                                fontSize: 16, color: Colors.black54),
+                              fontSize: 15,
+                              color: Colors.black,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ],
                       ),
                       Container(
-                        width: 65,
-                        height: 65,
+                        width: 75,
+                        height: 75,
                         decoration: const BoxDecoration(
                           color: Colors.white,
                           shape: BoxShape.circle,
                         ),
                         child: Padding(
-                          padding: const EdgeInsets.all(8.0),
+                          padding: const EdgeInsets.all(10.0),
                           child: Image.asset(
-                            _getVehicleAsset(vehicle.type, false),
+                            _getVehicleAsset(vehicle.type, needsCheck),
                             fit: BoxFit.contain,
                           ),
                         ),
                       ),
                     ],
                   ),
+                  if (needsCheck) ...[
+                    const SizedBox(height: 18),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: Colors.black,
+                            elevation: 0,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 10),
+                            side: const BorderSide(
+                                color: Colors.black, width: 1.5),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          onPressed: () {
+                            Navigator.push(
+                              context, MaterialPageRoute(
+                              builder: (context) => ScannerQr(),
+                            ),
+                            );
+                          },
+                          child: const Text(
+                            "Start the repair",
+                            style: TextStyle(
+                                fontWeight: FontWeight.w800, fontSize: 14),
+                          ),
+                        ),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: Colors.black,
+                            elevation: 0,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 10),
+                            side: const BorderSide(
+                                color: Colors.black, width: 1.5),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          onPressed: () async {
+                            // Відкриваємо екран та чекаємо на результат
+                            final result = await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    Contactsupport(
+                                      vehicleId: vehicle.id,
+                                      email: Provider
+                                          .of<UserController>(
+                                          context, listen: false)
+                                          .userEmail,
+                                    ),
+                              ),
+                            );
+
+                            // Якщо є результат — показуємо глобальне сповіщення зверху
+                            if (result != null && mounted) {
+                              showTopNotification(context, result.toString());
+                            }
+                          },
+                          child: const Text(
+                            "Report problem",
+                            style: TextStyle(
+                                fontWeight: FontWeight.w800, fontSize: 14),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ],
               ),
             ),

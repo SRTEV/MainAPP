@@ -88,7 +88,8 @@ class UserController extends ChangeNotifier {
           'VehicleID': VehicleId,
         }),
       );
-
+      print("Response status: ${response.statusCode}");
+      print("Response body: ${response.body}");
       if (response.statusCode == 201) {
         return "Success: Report created successfully";
       } else {
@@ -112,7 +113,6 @@ class UserController extends ChangeNotifier {
       return "Invalid date format (MM/YY)";
     }
 
-    // Зберігаємо CVV в пам'яті контролера для майбутньої оплати
     cardCvv = cvv;
 
     final url = Uri.parse('$serverApi/api/Card');

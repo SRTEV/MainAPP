@@ -12,7 +12,6 @@ import 'package:mainapp/Controllers/AuthController.dart';
 import 'package:mainapp/Controllers/RentalController.dart';
 import 'package:mainapp/Controllers/ScanController.dart';
 import 'package:provider/provider.dart';
-
 import '../Controllers/ChallangeController.dart';
 import '../Controllers/Controller.dart';
 import '../Controllers/PaymentController.dart';
@@ -24,7 +23,7 @@ import 'ContactSupport.dart';
 import 'History.dart';
 import 'Profile.dart';
 import 'ScannerQr.dart';
-
+import '../Modules/Notifications.dart';
 
 class MapPage extends StatefulWidget {
   const MapPage({super.key});
@@ -66,74 +65,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     return Icons.battery_0_bar;
   }
 
-  void _showTopNotification(BuildContext context, String message) {
-    if (!mounted) return;
-    bool isSuccess = message.toLowerCase().contains("success");
 
-    OverlayState overlayState = Overlay.of(context);
-    late OverlayEntry overlayEntry;
-
-    overlayEntry = OverlayEntry(
-      builder: (context) =>
-          Positioned(
-            top: MediaQuery
-                .of(context)
-                .padding
-                .top + 10,
-            left: 20,
-            right: 20,
-            child: Material(
-              color: Colors.transparent,
-              child: TweenAnimationBuilder<double>(
-                tween: Tween(begin: 0.0, end: 1.0),
-                duration: const Duration(milliseconds: 300),
-                builder: (context, value, child) {
-                  return Transform.translate(
-                    offset: Offset(0, -20 * (1 - value)),
-                    child: Opacity(
-                      opacity: value,
-                      child: child,
-                    ),
-                  );
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: isSuccess ? Colors.green.shade600 : Colors.red
-                        .shade600,
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.2),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Text(
-                    message,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-    );
-
-    overlayState.insert(overlayEntry);
-
-    Future.delayed(const Duration(seconds: 4), () {
-      overlayEntry.remove();
-    });
-  }
-
-  @override
   @override
   void initState() {
     super.initState();
@@ -367,7 +299,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
               _startedRental = matchedVehicle;
             });
           } else if (mounted) {
-            _showTopNotification(context, "Transport not found or deleted!");
+            showTopNotification(context, "Transport not found or deleted!");
           }
         }
       }
@@ -777,7 +709,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                                 ),
                               );
                               if (result != null && result is String) {
-                                _showTopNotification(scaffoldContext, result);
+                                showTopNotification(scaffoldContext, result);
                               }
                             },
                           ),
@@ -867,7 +799,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                         final userId = authController.userId;
 
                         if (token == null || userId == null) {
-                          _showTopNotification(
+                          showTopNotification(
                               scaffoldContext, "Authorization error!");
                           return;
                         }
@@ -876,7 +808,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                             .read<RentalController>()
                             .RentalId;
                         if (rentalId == null) {
-                          _showTopNotification(
+                          showTopNotification(
                               scaffoldContext, "Active rental ID not found!");
                           return;
                         }
@@ -884,7 +816,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
 
                         if (userController.CardNumb == null || userController
                             .cardExpiryDate == null) {
-                          _showTopNotification(scaffoldContext,
+                          showTopNotification(scaffoldContext,
                               "Please add a payment card first!");
                           return;
                         }
@@ -905,7 +837,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                         );
 
                         if (paymentMessage != null) {
-                          _showTopNotification(scaffoldContext, paymentMessage);
+                          showTopNotification(scaffoldContext, paymentMessage);
                         }
                         String? errorMessage = await context
                             .read<RentalController>()
@@ -924,7 +856,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                           context.read<Controller>().fetchVehicles();
                           context.read<ZoneController>().clearZones();
                         } else {
-                          _showTopNotification(scaffoldContext, errorMessage);
+                          showTopNotification(scaffoldContext, errorMessage);
                         }
                       },
                       child: const Text(
@@ -1008,7 +940,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                                       ),
                                     );
                                     if (result != null && result is String) {
-                                      _showTopNotification(
+                                      showTopNotification(
                                           scaffoldContext, result);
                                     }
                                   }),
@@ -1190,7 +1122,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                                       ),
                                     );
                                     if (result != null && result is String) {
-                                      _showTopNotification(
+                                      showTopNotification(
                                           scaffoldContext, result);
                                     }
                                   }),
@@ -1317,7 +1249,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                               ),
                               onPressed: () async {
                                 if (rentalCtrl.selectedPlan == null) {
-                                  _showTopNotification(
+                                  showTopNotification(
                                       context, "Please select a rental plan!");
                                   return;
                                 }
@@ -1328,7 +1260,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                                 final userId = authController.userId;
 
                                 if (token == null || userId == null) {
-                                  _showTopNotification(
+                                  showTopNotification(
                                       context, "Authorization error!");
                                   return;
                                 }
@@ -1351,10 +1283,10 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                                     });
                                   }
                                   context.read<Controller>().fetchVehicles();
-                                  _showTopNotification(
+                                  showTopNotification(
                                       context, "Rental started successfully!");
                                 } else {
-                                  _showTopNotification(context, errorMessage);
+                                  showTopNotification(context, errorMessage);
                                 }
                               },
                               child: const Text(
