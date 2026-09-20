@@ -11,15 +11,13 @@ class PaymentController extends ChangeNotifier {
   bool isLoading = false;
   String message = '';
 
-  Future<String?> payForRental(
-    int rentalId,
-    int userId,
-    String token,
-    String? cardNum,
-    String? cardExpiryDate,
-    String? cardCvv,
-    String? userEmail,
-  ) async {
+  Future<String?> payForRental(int rentalId,
+      int userId,
+      String token,
+      String? cardNum,
+      String? cardExpiryDate,
+      String? cardCvv,
+      String? userEmail,) async {
     isLoading = true;
     message = '';
     notifyListeners();
@@ -27,31 +25,29 @@ class PaymentController extends ChangeNotifier {
     if (cardNum == null || cardExpiryDate == null) {
       isLoading = false;
       notifyListeners();
-      return "No card found. The trip amount has been added to your outstanding balance.";
+      // Навіть якщо карти нема, шлемо на бекенд без paymentMethodId, щоб він зафіксував борг
     }
 
     int expMonth = 0;
     int expYear = 0;
     try {
-      final parts = cardExpiryDate.split('/');
+      final parts = cardExpiryDate!.split('/');
       expMonth = int.parse(parts[0]);
       expYear = int.parse("20${parts[1]}");
     } catch (_) {
-      isLoading = false;
-      notifyListeners();
-      return "Invalid card date format. Amount added to outstanding balance.";
+      // Формат дати невалідний
     }
 
     String? freshPaymentMethodId;
-    String? stripeErrorMessage;
 
+    // Пробуємо згенерувати метод оплати у Stripe SDK на телефоні
     try {
       Stripe.instance.dangerouslyUpdateCardDetails(
         CardDetails(
-          number: cardNum,
+          number: cardNum!,
           expirationMonth: expMonth,
           expirationYear: expYear,
-          cvc: cardCvv,
+          cvc: cardCvv ?? '',
         ),
       );
 
@@ -64,26 +60,13 @@ class PaymentController extends ChangeNotifier {
       );
       freshPaymentMethodId = paymentMethod.id;
     } catch (e) {
-      final errorStr = e.toString().toLowerCase();
-      if (errorStr.contains("incorrect_number") ||
-          errorStr.contains("invalid") ||
-          errorStr.contains("number")) {
-        stripeErrorMessage = "Invalid card number entered.";
-      } else if (errorStr.contains("expired") || errorStr.contains("expiry")) {
-        stripeErrorMessage = "The card has expired.";
-      } else if (errorStr.contains("cvc") || errorStr.contains("cvv")) {
-        stripeErrorMessage = "Invalid CVC/CVV code.";
-      } else {
-        stripeErrorMessage = "Bank card error.";
-      }
+      // Якщо сталася помилка на клієнті (наприклад, невірний номер картки),
+      // ми НЕ зупиняємо виконання, а залишаємо freshPaymentMethodId = null,
+      // щоб запит пішов на бекенд і сервер офіційно нарахував борг у базі!
+      freshPaymentMethodId = null;
     }
 
-    if (stripeErrorMessage != null) {
-      isLoading = false;
-      notifyListeners();
-      return "$stripeErrorMessage Amount added to outstanding balance.";
-    }
-
+    // Завжди відправляємо запиت на бекенд!
     String endpoint = '$serverApi/api/Payment/pay/$rentalId/$userId';
     if (freshPaymentMethodId != null && freshPaymentMethodId.isNotEmpty) {
       endpoint += '?paymentMethodId=$freshPaymentMethodId';
@@ -105,12 +88,10 @@ class PaymentController extends ChangeNotifier {
         message = data['message'] ?? "Success: Payment processed successfully.";
         return message;
       } else {
-        String backendMsg = data['message'] ?? "Payment failed";
-        if (stripeErrorMessage != null) {
-          message = "$stripeErrorMessage $backendMsg";
-        } else {
-          message = backendMsg;
-        }
+        // Бекенд поверне помилку (наприклад 400), де чітко написано про борг,
+        // оскільки він самостійно його щойно нарахував у базі!
+        message =
+            data['message'] ?? "Payment failed. Added to outstanding balance.";
         return message;
       }
     } catch (_) {
@@ -122,8 +103,6 @@ class PaymentController extends ChangeNotifier {
       notifyListeners();
     }
   }
-
-  // ЗМІНЕНО НА ПОЗИЦІЙНІ АРГУМЕНТИ (БЕЗ ФІГУРНИХ ДУЖОК)
   Future<bool> payOutstandingBalance(
     int userId,
     String token,

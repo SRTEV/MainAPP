@@ -17,6 +17,7 @@ class UserResultModel {
   final String vehicleTypeName; // Додано
   final String? startDate;
   final String? endDate;
+  final int? paymentId;
 
   UserResultModel({
     required this.id,
@@ -31,6 +32,7 @@ class UserResultModel {
     required this.vehicleTypeName,
     this.startDate,
     this.endDate,
+    this.paymentId,
   });
 
   factory UserResultModel.fromJson(Map<String, dynamic> json) {
@@ -47,6 +49,7 @@ class UserResultModel {
       vehicleTypeName: json['vehicleTypeName'] ?? '',
       startDate: json['startDate'],
       endDate: json['endDate'],
+      paymentId: json['paymentId'],
     );
   }
 }

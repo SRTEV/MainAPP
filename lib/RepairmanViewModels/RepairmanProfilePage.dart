@@ -7,7 +7,9 @@ import 'package:provider/provider.dart';
 import '../ViewModels/Login.dart';
 
 class RepairmanProfile extends StatefulWidget {
-  const RepairmanProfile({super.key});
+  final bool hasActiveRepair; // Додаємо перевірку на активний ремонт
+
+  const RepairmanProfile({super.key, this.hasActiveRepair = false});
 
   @override
   _RepairmanProfileState createState() => _RepairmanProfileState();
@@ -67,25 +69,50 @@ class _RepairmanProfileState extends State<RepairmanProfile> {
 
               const Spacer(flex: 2),
 
-              // Центральна кнопка перемикання в режим користувача (піднята вище)
+              // Центральна кнопка перемикання в режим користувача
               Center(
-                child: _buildActionButton(
-                  "User mode",
-                  Colors.black,
-                  () {
-                    authCtrl.toggleRepairmanMode();
-                    Navigator.pop(context);
-                  },
-                  width: 300,
-                  height: 48,
-                  fontSize: 25,
-                ),
+                child: Column(
+                  children: [
+                    _buildActionButton(
+                      "User mode",
+                      widget.hasActiveRepair ? Colors.grey : Colors.black,
+                      widget.hasActiveRepair
+                          ? () {
+                              // Виводимо сповіщення, якщо кнопка заблокована
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    "Cannot switch mode while repair is active!",
+                                  ),
+                                  duration: Duration(seconds: 2),
+                                ),
+                              );
+                            }
+                          : () {
+                              authCtrl.toggleRepairmanMode();
+                              Navigator.pop(context);
+                            },
+                      width: 300,
+                      height: 48,
+                      fontSize: 25,
+                    ),
+                    if (widget.hasActiveRepair) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        "Finish active repair first",
+                        style: GoogleFonts.inter(
+                          fontSize: 15,
+                          color: Colors.red,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ]),
               ),
 
-              const Spacer(flex: 3),
+              const Spacer(flex: 3),,
 
-              // Кнопка Log out у самому низу з правого боку (без рамки та фону, лише сірий текст)
-              Align(
+              // Кнопка Log ouAlign(
                 alignment: Alignment.centerRight,
                 child: TextButton(
                   onPressed: () {
@@ -94,7 +121,7 @@ class _RepairmanProfileState extends State<RepairmanProfile> {
                     Navigator.pushAndRemoveUntil(
                       context,
                       MaterialPageRoute(builder: (context) => const Login()),
-                      (route) => false,
+                          (route) => false,
                     );
                   },
                   style: TextButton.styleFrom(
@@ -121,22 +148,24 @@ class _RepairmanProfileState extends State<RepairmanProfile> {
     );
   }
 
-  Widget _buildActionButton(
-    String text,
-    Color borderColor,
-    VoidCallback onPressed, {
-    double? width,
-    double height = 48,
-    double fontSize = 16,
-  }) {
+  Widget _buildActionButton(String text,
+      Color borderColor,
+      VoidCallback onPressed, {
+        double? width,
+        double height = 48,
+        double fontSize = 16,
+      }) {
     return SizedBox(
       width: width ?? double.infinity,
       height: height,
       child: ElevatedButton(
         onPressed: onPressed,
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.black,
-          foregroundColor: Colors.white,
+          backgroundColor: borderColor == Colors.grey
+              ? Colors.grey.shade300
+              : Colors.black,
+          foregroundColor: borderColor == Colors.grey ? Colors.grey : Colors
+              .white,
           side: BorderSide(color: borderColor, width: 2.0),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
@@ -149,7 +178,6 @@ class _RepairmanProfileState extends State<RepairmanProfile> {
           style: TextStyle(
             fontSize: fontSize,
             fontWeight: FontWeight.w600,
-            color: borderColor == Colors.grey ? Colors.grey : null,
           ),
         ),
       ),

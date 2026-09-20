@@ -429,7 +429,7 @@ class _ProfileState extends State<Profile> {
                         );
                           } else {
                             _showTopNotification(
-                                context, "No competition results found.");
+                                context, "No challenges were found");
                           }
                         } else {
                           _showTopNotification(

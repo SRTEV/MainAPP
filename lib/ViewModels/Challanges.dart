@@ -131,7 +131,6 @@ class ChallangesState extends State<Challanges> {
                             fontWeight: FontWeight.w500,
                           ),
                         ),
-                        // Блок індикаторів у правому верхньому куті
                         Row(
                           children: [
                             if (isRewardUsed)
@@ -281,7 +280,7 @@ class ChallangesState extends State<Challanges> {
                         if (name.contains('discount')) {
                           return "$positionText — ${reward['name']}: $unit%";
                         } else if (name.contains('free ride')) {
-                          return "$positionText — ${reward['name']}: Free ";
+                          return "$positionText — ${reward['name']}: One Free Ride at tariff";
                         } else {
                           return "$positionText — ${reward['name']}: $unit km";
                         }

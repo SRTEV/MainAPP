@@ -88,8 +88,6 @@ class UserController extends ChangeNotifier {
           'VehicleID': VehicleId,
         }),
       );
-      print("Response status: ${response.statusCode}");
-      print("Response body: ${response.body}");
       if (response.statusCode == 201) {
         return "Success: Report created successfully";
       } else {

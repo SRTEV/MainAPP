@@ -9,6 +9,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart' hide Path;
 import 'package:mainapp/Controllers/AuthController.dart';
+import 'package:mainapp/Controllers/ScanController.dart';
 import 'package:provider/provider.dart';
 
 import '../Controllers/Controller.dart';
@@ -42,6 +43,7 @@ class RepairmanmapState extends State<Repairmanmap>
 
   LatLng? _lastPosition;
   dynamic _selectedVehicle;
+  dynamic _startedRepair;
 
   final MapController _mapController = MapController();
   StreamSubscription<Position>? _positionStream;
@@ -76,11 +78,24 @@ class RepairmanmapState extends State<Repairmanmap>
     _initCompass();
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _checkUserBlockStatus();
+
+      if (mounted) {
+        final vehicleController = Provider.of<Controller>(
+            context, listen: false);
+        await vehicleController.fetchVehicles();
+        vehicleController.startVehiclePolling();
+      }
+    });
+  }
+
+  Future<void> _checkUserBlockStatus() async {
+    if (!mounted) return;
+    try {
       final userController = Provider.of<UserController>(
           context, listen: false);
       final authController = Provider.of<AuthController>(
           context, listen: false);
-      final vehicleController = Provider.of<Controller>(context, listen: false);
 
       final userid = authController.userId;
       final token = authController.token;
@@ -92,15 +107,9 @@ class RepairmanmapState extends State<Repairmanmap>
             context,
             MaterialPageRoute(builder: (context) => const Blocked()),
           );
-          return;
         }
       }
-
-      if (mounted) {
-        await vehicleController.fetchVehicles();
-        vehicleController.startVehiclePolling();
-      }
-    });
+    } catch (_) {}
   }
 
   void _ensureFiltersInitialized(List<dynamic> vehicles) {
@@ -213,16 +222,74 @@ class RepairmanmapState extends State<Repairmanmap>
   }
 
   Future<void> _onItemTapped(int index, BuildContext context) async {
+    await _checkUserBlockStatus();
+    if (!mounted) return;
+
     if (index == 0) {
       debugPrint("Admin calls button clicked");
     } else if (index == 1) {
-      Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const ScannerQr()));
+      final scannedCode = await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const ScannerQr()),
+      );
+
+      if (scannedCode != null && mounted) {
+        final authController = context.read<AuthController>();
+        final token = authController.token;
+        final vehicleController = context.read<Controller>();
+
+        if (token != null) {
+          final matchedVehicle = await context
+              .read<ScanController>()
+              .scanVehicle(scannedCode, token);
+
+          if (matchedVehicle != null && mounted) {
+            if (matchedVehicle.status == 'NeedCheck') {
+              dynamic fullVehicle;
+              try {
+                fullVehicle = vehicleController.vehicles.firstWhere((v) =>
+                v.id == matchedVehicle.id);
+              } catch (_) {
+                fullVehicle = matchedVehicle;
+              }
+
+              await vehicleController.inRemont(fullVehicle.id, token);
+
+              final vehicleTypeId = fullVehicle.vehicleTypeId;
+              if (vehicleTypeId != null) {
+                await context.read<ZoneController>().fetchZones(
+                    vehicleTypeId, token);
+              }
+
+              if (mounted) {
+                setState(() {
+                  _selectedVehicle = null;
+                  _startedRepair = fullVehicle;
+                });
+              }
+            } else {
+              showTopNotification(
+                context,
+                "This vehicle does not need a check (Status: ${matchedVehicle
+                    .status})",
+              );
+            }
+          } else if (mounted) {
+            showTopNotification(context, "Transport not found or deleted!");
+          }
+        }
+      }
     } else if (index == 2) {
       Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const RepairmanProfile()));
+        context,
+        MaterialPageRoute(
+          builder: (context) =>
+              RepairmanProfile(
+                hasActiveRepair: _startedRepair !=
+                    null, // Передаємо статус ремонту
+              ),
+        ),
+      );
     }
   }
 
@@ -248,6 +315,12 @@ class RepairmanmapState extends State<Repairmanmap>
             vehicles.firstWhere((v) => v.id == _selectedVehicle.id);
       } catch (_) {}
     }
+    if (_startedRepair != null) {
+      try {
+        _startedRepair =
+            vehicles.firstWhere((v) => v.id == _startedRepair.id);
+      } catch (_) {}
+    }
 
     return Scaffold(
       body: Stack(
@@ -258,6 +331,7 @@ class RepairmanmapState extends State<Repairmanmap>
               initialCenter: userLocation,
               initialZoom: 16.0,
               onTap: (tapPosition, point) {
+                if (_startedRepair != null) return;
                 setState(() {
                   _selectedVehicle = null;
                 });
@@ -295,7 +369,9 @@ class RepairmanmapState extends State<Repairmanmap>
               ),
               MarkerLayer(
                 markers: vehicles
-                    .where((v) => _visibleTypes.contains(v.type))
+                    .where((v) =>
+                (v.status == 'Available' || v.status == 'NeedCheck') &&
+                    _visibleTypes.contains(v.type))
                     .map((v) {
                   bool needsCheck = v.status == 'NeedCheck';
                   String pinAsset = _getVehicleAsset(v.type, needsCheck);
@@ -307,6 +383,11 @@ class RepairmanmapState extends State<Repairmanmap>
                     child: GestureDetector(
                       behavior: HitTestBehavior.opaque,
                       onTap: () async {
+                        if (_startedRepair != null) return;
+
+                        await _checkUserBlockStatus();
+                        if (!mounted) return;
+
                         final token = context
                             .read<AuthController>()
                             .token;
@@ -317,6 +398,7 @@ class RepairmanmapState extends State<Repairmanmap>
 
                         if (mounted) {
                           setState(() {
+                            _startedRepair = null;
                             _selectedVehicle = v;
                           });
                         }
@@ -326,7 +408,6 @@ class RepairmanmapState extends State<Repairmanmap>
                           pinAsset,
                           width: 44,
                           height: 44,
-                          fit: BoxFit.contain,
                         ),
                       ),
                     ),
@@ -429,12 +510,21 @@ class RepairmanmapState extends State<Repairmanmap>
               right: 0,
               child: _buildVehicleInfoWidget(context, _selectedVehicle),
             ),
+          if (_startedRepair != null)
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: _buildStartedRepairWidget(context, _startedRepair),
+            ),
         ],
       ),
       floatingActionButton: AnimatedPadding(
         duration: const Duration(milliseconds: 200),
         padding: EdgeInsets.only(
-          bottom: (_selectedVehicle != null) ? 260.0 : 10.0,
+          bottom: (_selectedVehicle != null || _startedRepair != null)
+              ? 260.0
+              : 10.0,
         ),
         child: FloatingActionButton(
           backgroundColor: Colors.black,
@@ -524,6 +614,171 @@ class RepairmanmapState extends State<Repairmanmap>
           ? 'lib/assets/imgs/scooterRED.png'
           : 'lib/assets/imgs/scooter.png';
     }
+  }
+
+  Widget _buildStartedRepairWidget(BuildContext context, dynamic vehicle) {
+    num batteryLevel = vehicle.batteryLevel is num
+        ? vehicle.batteryLevel
+        : num.tryParse(vehicle.batteryLevel?.toString() ?? '0') ?? 0;
+
+    return Consumer<Controller>(
+      builder: (context, vehicleController, child) {
+        return Align(
+          alignment: Alignment.bottomCenter,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: const BoxDecoration(color: Colors.black),
+            child: Container(
+              padding: const EdgeInsets.all(15),
+              decoration: BoxDecoration(
+                color: const Color(0xFFD9D9D9),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Text(
+                      "${vehicle.type} ${vehicle.model ?? vehicle.id}",
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(_getBatteryIcon(batteryLevel), size: 40),
+                              const SizedBox(width: 8),
+                              Text(
+                                "$batteryLevel%",
+                                style: const TextStyle(
+                                    fontSize: 32, fontWeight: FontWeight.w900),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            "Battery life ${(batteryLevel * 0.21)
+                                .toStringAsFixed(0)} KM",
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.black54,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          const Text(
+                            "Status : In remont",
+                            style: TextStyle(
+                              fontSize: 15,
+                              color: Colors.black,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Container(
+                        width: 75,
+                        height: 75,
+                        decoration: const BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(10.0),
+                          child: Image.asset(
+                            _getVehicleAsset(vehicle.type, false),
+                            fit: BoxFit.contain,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: Colors.black,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 10),
+                          side: const BorderSide(
+                              color: Colors.black, width: 1.5),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        onPressed: () {
+                          debugPrint(
+                              "Long-term repair clicked for vehicle ${vehicle
+                                  .id}");
+                        },
+                        child: const Text(
+                          "long-term repair",
+                          style: TextStyle(
+                              fontWeight: FontWeight.w800, fontSize: 14),
+                        ),
+                      ),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: Colors.black,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 10),
+                          side: const BorderSide(
+                              color: Colors.black, width: 1.5),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        onPressed: () async {
+                          final authController = context.read<AuthController>();
+                          final token = authController.token;
+
+                          if (token != null) {
+                            await vehicleController.EndRemont(
+                                vehicle.id, token);
+                          }
+
+                          if (mounted) {
+                            setState(() {
+                              _startedRepair = null;
+                            });
+                            context.read<Controller>().fetchVehicles();
+                            context.read<ZoneController>().clearZones();
+                            showTopNotification(
+                                context, "Remont ended successfully!");
+                          }
+                        },
+                        child: const Text(
+                          "End remont",
+                          style: TextStyle(
+                              fontWeight: FontWeight.w800, fontSize: 14),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 
   Widget _buildVehicleInfoWidget(BuildContext context, dynamic vehicle) {
@@ -642,12 +897,67 @@ class RepairmanmapState extends State<Repairmanmap>
                               borderRadius: BorderRadius.circular(10),
                             ),
                           ),
-                          onPressed: () {
-                            Navigator.push(
-                              context, MaterialPageRoute(
-                              builder: (context) => ScannerQr(),
-                            ),
+                          onPressed: () async {
+                            await _checkUserBlockStatus();
+                            if (!mounted) return;
+
+                            final scannedCode = await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const ScannerQr(),
+                              ),
                             );
+
+                            if (scannedCode != null && mounted) {
+                              final authController = context.read<
+                                  AuthController>();
+                              final token = authController.token;
+                              if (token != null) {
+                                final matchedVehicle = await context
+                                    .read<ScanController>()
+                                    .scanVehicle(scannedCode, token);
+
+                                if (matchedVehicle != null && mounted) {
+                                  if (matchedVehicle.status == 'NeedCheck') {
+                                    dynamic fullVehicle;
+                                    try {
+                                      fullVehicle = vehicleController.vehicles
+                                          .firstWhere((v) =>
+                                      v.id == matchedVehicle.id);
+                                    } catch (_) {
+                                      fullVehicle = matchedVehicle;
+                                    }
+
+                                    await vehicleController.inRemont(
+                                        fullVehicle.id, token);
+
+                                    final vehicleTypeId = fullVehicle
+                                        .vehicleTypeId;
+                                    if (vehicleTypeId != null) {
+                                      await context
+                                          .read<ZoneController>()
+                                          .fetchZones(vehicleTypeId, token);
+                                    }
+
+                                    if (mounted) {
+                                      setState(() {
+                                        _selectedVehicle = null;
+                                        _startedRepair = fullVehicle;
+                                      });
+                                    }
+                                  } else {
+                                    showTopNotification(
+                                      context,
+                                      "This vehicle does not need a check (Status: ${matchedVehicle
+                                          .status})",
+                                    );
+                                  }
+                                } else if (mounted) {
+                                  showTopNotification(context,
+                                      "Transport not found or deleted!");
+                                }
+                              }
+                            }
                           },
                           child: const Text(
                             "Start the repair",
@@ -669,7 +979,9 @@ class RepairmanmapState extends State<Repairmanmap>
                             ),
                           ),
                           onPressed: () async {
-                            // Відкриваємо екран та чекаємо на результат
+                            await _checkUserBlockStatus();
+                            if (!mounted) return;
+
                             final result = await Navigator.push(
                               context,
                               MaterialPageRoute(
@@ -683,8 +995,6 @@ class RepairmanmapState extends State<Repairmanmap>
                                     ),
                               ),
                             );
-
-                            // Якщо є результат — показуємо глобальне сповіщення зверху
                             if (result != null && mounted) {
                               showTopNotification(context, result.toString());
                             }

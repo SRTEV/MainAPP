@@ -80,6 +80,61 @@ class Controller extends ChangeNotifier {
     }
   }
 
+  Future<void> inRemont(int vehicleId, String token) async {
+    final url = Uri.parse('$serverApi/api/Vehicle/inremont/$vehicleId');
+    try {
+      final response = await http.put(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final updatedVehicle = VehicleModel.fromJson(
+            json.decode(response.body));
+        final index = vehicles.indexWhere((v) => v.id == vehicleId);
+        if (index != -1) {
+          vehicles[index] = updatedVehicle;
+          notifyListeners();
+        }
+      } else {
+        debugPrint('Failed to update vehicle in remont. Status code: ${response
+            .statusCode}');
+      }
+    } catch (e) {
+      debugPrint("API Error: $e");
+    }
+  }
+
+  Future<void> EndRemont(int vehicleId, String token) async {
+    final url = Uri.parse('$serverApi/api/Vehicle/endremont/$vehicleId');
+    try {
+      final response = await http.put(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+      if (response.statusCode == 200) {
+        final updatedVehicle = VehicleModel.fromJson(
+            json.decode(response.body));
+        final index = vehicles.indexWhere((v) => v.id == vehicleId);
+        if (index != -1) {
+          vehicles[index] = updatedVehicle;
+          notifyListeners();
+        }
+      } else {
+        debugPrint('Failed to update vehicle end remont. Status code: ${response
+            .statusCode}');
+      }
+    } catch (e) {
+      debugPrint("API Error: $e");
+    }
+  }
+
   void startVehiclePolling() {
     _vehicleTimer?.cancel();
     _vehicleTimer = Timer.periodic(const Duration(seconds: 5), (_) => fetchVehicles());

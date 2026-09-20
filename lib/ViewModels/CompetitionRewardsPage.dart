@@ -7,7 +7,7 @@ import '../Controllers/ChallangeController.dart';
 
 class Competitionrewardspage extends StatefulWidget {
   final int userId;
-  final int competitionId; // Залишаємо для сумісності, але тепер показуватимемо весь список
+  final int competitionId; // Залишаємо для сумісності
 
   const Competitionrewardspage({
     super.key,
@@ -45,7 +45,20 @@ class _CompetitionrewardspageState extends State<Competitionrewardspage> {
                   child: CircularProgressIndicator(color: Colors.black));
             }
 
-            final results = controller.allUserResults;
+            // Поточна дата (знижуємо до півночі для точного порівняння)
+            final now = DateTime(2026, 9, 20);
+
+            // Фільтруємо список: залишаємо лише ті змагання, термін яких вже минув (endDate <= поточна дата)
+            final results = controller.allUserResults.where((result) {
+              if (result.endDate == null) return false;
+              try {
+                final endDate = DateTime.parse(result.endDate!);
+                // Перевіряємо, чи дата закінчення раніша або дорівнює сьогоднішній
+                return endDate.isBefore(now) || endDate.isAtSameMomentAs(now);
+              } catch (_) {
+                return false;
+              }
+            }).toList();
 
             return Padding(
               padding: const EdgeInsets.all(16.0),
@@ -81,7 +94,7 @@ class _CompetitionrewardspageState extends State<Competitionrewardspage> {
                     Expanded(
                       child: Center(
                         child: Text(
-                          "No reward results found for this user yet.",
+                          "No prizes found yet.",
                           textAlign: TextAlign.center,
                           style: GoogleFonts.poppins(
                             fontSize: 16,
@@ -96,7 +109,9 @@ class _CompetitionrewardspageState extends State<Competitionrewardspage> {
                         itemCount: results.length,
                         itemBuilder: (context, index) {
                           final result = results[index];
-                          final bool isRewardUsed = result.rewardAmount == 0;
+
+                          // Використовуємо paymentId для визначення, чи використана нагорода
+                          final bool isRewardUsed = result.paymentId != null;
 
                           return Container(
                             margin: const EdgeInsets.only(bottom: 16),
@@ -156,8 +171,8 @@ class _CompetitionrewardspageState extends State<Competitionrewardspage> {
                                     Text(
                                       result.vehicleTypeName,
                                       style: GoogleFonts.poppins(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w600,
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.w700,
                                         color: Colors.white,
                                       ),
                                     ),
