@@ -19,8 +19,7 @@ class UserController extends ChangeNotifier {
   String? banReason;
   String? CardNumb;
   String? cardExpiryDate;
-  String? cardCvv; // Зберігаємо CVV в пам'яті для автоматичної оплати
-
+  String? cardCvv;
   Future<void> fetchUserName(int id, String token) async {
     isLoading = true;
     notifyListeners();
@@ -98,6 +97,29 @@ class UserController extends ChangeNotifier {
     }
   }
 
+  Future<int> RepeirmanReportCount(String token) async {
+    final url = Uri.parse('$serverApi/api/Report/reportsCount');
+    try {
+      final response = await http.get(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        return int.tryParse(response.body) ?? 0;
+      } else {
+        debugPrint('Failed to fetch report count. Status code: ${response
+            .statusCode}');
+        return 0;
+      }
+    } catch (e) {
+      debugPrint("API Error: $e");
+      return 0;
+    }
+  }
   Future<String?> addCard(String cardNumber, String cvv, String expiryDate, String token) async {
     final cleanCardNumber = cardNumber.replaceAll(RegExp(r'\s+'), '');
 

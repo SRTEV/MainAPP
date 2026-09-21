@@ -20,6 +20,8 @@ import '../ViewModels/Blocked.dart';
 import '../ViewModels/ContactSupport.dart';
 import '../ViewModels/ScannerQr.dart';
 import 'RepairmanProfilePage.dart';
+import 'ReportWork.dart';
+import 'StartWork.dart';
 
 class Repairmanmap extends StatefulWidget {
   const Repairmanmap({super.key});
@@ -228,56 +230,32 @@ class RepairmanmapState extends State<Repairmanmap>
     if (index == 0) {
       debugPrint("Admin calls button clicked");
     } else if (index == 1) {
-      final scannedCode = await Navigator.push(
+      // Чекаємо на повернення самоката з екрана Startwork по кнопці GO
+      final selectedVehicleFromWork = await Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => const ScannerQr()),
+        MaterialPageRoute(
+          builder: (context) => const Startwork(),
+        ),
       );
 
-      if (scannedCode != null && mounted) {
-        final authController = context.read<AuthController>();
-        final token = authController.token;
+      // Якщо користувач натиснув GO, беремо актуальні дані та переносимо карту на цей самокат
+      if (selectedVehicleFromWork != null && mounted) {
         final vehicleController = context.read<Controller>();
-
-        if (token != null) {
-          final matchedVehicle = await context
-              .read<ScanController>()
-              .scanVehicle(scannedCode, token);
-
-          if (matchedVehicle != null && mounted) {
-            if (matchedVehicle.status == 'NeedCheck') {
-              dynamic fullVehicle;
-              try {
-                fullVehicle = vehicleController.vehicles.firstWhere((v) =>
-                v.id == matchedVehicle.id);
-              } catch (_) {
-                fullVehicle = matchedVehicle;
-              }
-
-              await vehicleController.inRemont(fullVehicle.id, token);
-
-              final vehicleTypeId = fullVehicle.vehicleTypeId;
-              if (vehicleTypeId != null) {
-                await context.read<ZoneController>().fetchZones(
-                    vehicleTypeId, token);
-              }
-
-              if (mounted) {
-                setState(() {
-                  _selectedVehicle = null;
-                  _startedRepair = fullVehicle;
-                });
-              }
-            } else {
-              showTopNotification(
-                context,
-                "This vehicle does not need a check (Status: ${matchedVehicle
-                    .status})",
-              );
-            }
-          } else if (mounted) {
-            showTopNotification(context, "Transport not found or deleted!");
-          }
+        dynamic latestVehicle;
+        try {
+          latestVehicle = vehicleController.vehicles.firstWhere(
+                (v) => v.id == selectedVehicleFromWork.id,
+          );
+        } catch (_) {
+          latestVehicle = selectedVehicleFromWork;
         }
+
+        setState(() {
+          _selectedVehicle = latestVehicle;
+          _startedRepair = null;
+          Fallow = false; // Зупиняємо автостеження за користувачем
+        });
+        _mapController.move(latestVehicle.position, 18.0);
       }
     } else if (index == 2) {
       Navigator.push(
@@ -285,8 +263,7 @@ class RepairmanmapState extends State<Repairmanmap>
         MaterialPageRoute(
           builder: (context) =>
               RepairmanProfile(
-                hasActiveRepair: _startedRepair !=
-                    null, // Передаємо статус ремонту
+                hasActiveRepair: _startedRepair != null,
               ),
         ),
       );
@@ -746,22 +723,25 @@ class RepairmanmapState extends State<Repairmanmap>
                           ),
                         ),
                         onPressed: () async {
-                          final authController = context.read<AuthController>();
-                          final token = authController.token;
+                          // Відкриваємо екран звіту та передаємо весь об'єкт самоката
+                          final result = await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  Reportwork(
+                                    vehicle: vehicle,
+                                  ),
+                            ),
+                          );
 
-                          if (token != null) {
-                            await vehicleController.EndRemont(
-                                vehicle.id, token);
-                          }
-
-                          if (mounted) {
+                          // Якщо звіт успішно відправлено, очищаємо стан активного ремонту
+                          if (result != null && mounted) {
                             setState(() {
                               _startedRepair = null;
                             });
                             context.read<Controller>().fetchVehicles();
                             context.read<ZoneController>().clearZones();
-                            showTopNotification(
-                                context, "Remont ended successfully!");
+                            showTopNotification(context, result.toString());
                           }
                         },
                         child: const Text(
@@ -879,135 +859,137 @@ class RepairmanmapState extends State<Repairmanmap>
                       ),
                     ],
                   ),
-                  if (needsCheck) ...[
-                    const SizedBox(height: 18),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.white,
-                            foregroundColor: Colors.black,
-                            elevation: 0,
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 10),
-                            side: const BorderSide(
-                                color: Colors.black, width: 1.5),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
+                  const SizedBox(height: 18),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: needsCheck ? Colors.white : Colors
+                              .grey.shade300,
+                          foregroundColor: needsCheck ? Colors.black : Colors
+                              .grey,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 10),
+                          side: BorderSide(
+                              color: needsCheck ? Colors.black : Colors.grey,
+                              width: 1.5),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
                           ),
-                          onPressed: () async {
-                            await _checkUserBlockStatus();
-                            if (!mounted) return;
+                        ),
+                        onPressed: !needsCheck
+                            ? null
+                            : () async {
+                          await _checkUserBlockStatus();
+                          if (!mounted) return;
 
-                            final scannedCode = await Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const ScannerQr(),
-                              ),
-                            );
+                          final scannedCode = await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const ScannerQr(),
+                            ),
+                          );
 
-                            if (scannedCode != null && mounted) {
-                              final authController = context.read<
-                                  AuthController>();
-                              final token = authController.token;
-                              if (token != null) {
-                                final matchedVehicle = await context
-                                    .read<ScanController>()
-                                    .scanVehicle(scannedCode, token);
+                          if (scannedCode != null && mounted) {
+                            final authController = context.read<
+                                AuthController>();
+                            final token = authController.token;
+                            if (token != null) {
+                              final matchedVehicle = await context
+                                  .read<ScanController>()
+                                  .scanVehicle(scannedCode, token);
 
-                                if (matchedVehicle != null && mounted) {
-                                  if (matchedVehicle.status == 'NeedCheck') {
-                                    dynamic fullVehicle;
-                                    try {
-                                      fullVehicle = vehicleController.vehicles
-                                          .firstWhere((v) =>
-                                      v.id == matchedVehicle.id);
-                                    } catch (_) {
-                                      fullVehicle = matchedVehicle;
-                                    }
-
-                                    await vehicleController.inRemont(
-                                        fullVehicle.id, token);
-
-                                    final vehicleTypeId = fullVehicle
-                                        .vehicleTypeId;
-                                    if (vehicleTypeId != null) {
-                                      await context
-                                          .read<ZoneController>()
-                                          .fetchZones(vehicleTypeId, token);
-                                    }
-
-                                    if (mounted) {
-                                      setState(() {
-                                        _selectedVehicle = null;
-                                        _startedRepair = fullVehicle;
-                                      });
-                                    }
-                                  } else {
-                                    showTopNotification(
-                                      context,
-                                      "This vehicle does not need a check (Status: ${matchedVehicle
-                                          .status})",
-                                    );
+                              if (matchedVehicle != null && mounted) {
+                                if (matchedVehicle.status == 'NeedCheck') {
+                                  dynamic fullVehicle;
+                                  try {
+                                    fullVehicle = vehicleController.vehicles
+                                        .firstWhere((v) =>
+                                    v.id == matchedVehicle.id);
+                                  } catch (_) {
+                                    fullVehicle = matchedVehicle;
                                   }
-                                } else if (mounted) {
-                                  showTopNotification(context,
-                                      "Transport not found or deleted!");
+
+                                  await vehicleController.inRemont(
+                                      fullVehicle.id, token);
+
+                                  final vehicleTypeId = fullVehicle
+                                      .vehicleTypeId;
+                                  if (vehicleTypeId != null) {
+                                    await context
+                                        .read<ZoneController>()
+                                        .fetchZones(vehicleTypeId, token);
+                                  }
+
+                                  if (mounted) {
+                                    setState(() {
+                                      _selectedVehicle = null;
+                                      _startedRepair = fullVehicle;
+                                    });
+                                  }
+                                } else {
+                                  showTopNotification(
+                                    context,
+                                    "This vehicle does not need a check (Status: ${matchedVehicle
+                                        .status})",
+                                  );
                                 }
+                              } else if (mounted) {
+                                showTopNotification(context,
+                                    "Transport not found or deleted!");
                               }
                             }
-                          },
-                          child: const Text(
-                            "Start the repair",
-                            style: TextStyle(
-                                fontWeight: FontWeight.w800, fontSize: 14),
+                          }
+                        },
+                        child: Text("Start the repair",
+                          style: TextStyle(
+                              fontWeight: FontWeight.w800, fontSize: 14),
+                        ),
+                      ),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: Colors.black,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 10),
+                          side: const BorderSide(
+                              color: Colors.black, width: 1.5),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
                           ),
                         ),
-                        ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.white,
-                            foregroundColor: Colors.black,
-                            elevation: 0,
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 10),
-                            side: const BorderSide(
-                                color: Colors.black, width: 1.5),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                          onPressed: () async {
-                            await _checkUserBlockStatus();
-                            if (!mounted) return;
+                        onPressed: () async {
+                          await _checkUserBlockStatus();
+                          if (!mounted) return;
 
-                            final result = await Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) =>
-                                    Contactsupport(
-                                      vehicleId: vehicle.id,
-                                      email: Provider
-                                          .of<UserController>(
-                                          context, listen: false)
-                                          .userEmail,
-                                    ),
-                              ),
-                            );
-                            if (result != null && mounted) {
-                              showTopNotification(context, result.toString());
-                            }
-                          },
-                          child: const Text(
-                            "Report problem",
-                            style: TextStyle(
-                                fontWeight: FontWeight.w800, fontSize: 14),
-                          ),
+                          final result = await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  Contactsupport(
+                                    vehicleId: vehicle.id,
+                                    email: Provider
+                                        .of<UserController>(
+                                        context, listen: false)
+                                        .userEmail,
+                                  ),
+                            ),
+                          );
+                          if (result != null && mounted) {
+                            showTopNotification(context, result.toString());
+                          }
+                        },
+                        child: const Text(
+                          "Report problem",
+                          style: TextStyle(
+                              fontWeight: FontWeight.w800, fontSize: 14),
                         ),
-                      ],
-                    ),
-                  ],
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -1019,6 +1001,9 @@ class RepairmanmapState extends State<Repairmanmap>
 }
 
 class Pointer extends CustomPainter {
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+
   @override
   void paint(Canvas canvas, Size size) {
     final centerX = size.width / 2;
@@ -1046,7 +1031,4 @@ class Pointer extends CustomPainter {
       ..close();
     canvas.drawPath(path, paint);
   }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

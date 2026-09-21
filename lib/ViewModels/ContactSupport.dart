@@ -45,7 +45,7 @@ class ContactsupportState extends State<Contactsupport> {
         (widget.email != null || userController.userEmail != null);
     final bool isRepairmanMode = isLoggedIn && authController.RMode;
     final String activeProblemCategory = isRepairmanMode
-        ? 'Repairman'
+        ? 'Repairman problem'
         : (isLoggedIn ? _selectedProblem : 'Problem with account');
 
     return GestureDetector(
@@ -125,7 +125,7 @@ class ContactsupportState extends State<Contactsupport> {
                       color: Colors.grey.shade200,
                     ),
                     child: const Text(
-                      'Repairman',
+                      'Repairman problem',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,

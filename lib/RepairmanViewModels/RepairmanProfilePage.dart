@@ -3,11 +3,10 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:mainapp/Controllers/AuthController.dart';
 import 'package:mainapp/Controllers/UserController.dart';
 import 'package:provider/provider.dart';
-
 import '../ViewModels/Login.dart';
 
 class RepairmanProfile extends StatefulWidget {
-  final bool hasActiveRepair; // Додаємо перевірку на активний ремонт
+  final bool hasActiveRepair;
 
   const RepairmanProfile({super.key, this.hasActiveRepair = false});
 
@@ -69,7 +68,6 @@ class _RepairmanProfileState extends State<RepairmanProfile> {
 
               const Spacer(flex: 2),
 
-              // Центральна кнопка перемикання в режим користувача
               Center(
                 child: Column(
                   children: [
@@ -108,11 +106,9 @@ class _RepairmanProfileState extends State<RepairmanProfile> {
                       ),
                     ],
                   ]),
-              ),
+              ),,
 
-              const Spacer(flex: 3),,
-
-              // Кнопка Log ouAlign(
+              const Spacer(flex: 3)Align(
                 alignment: Alignment.centerRight,
                 child: TextButton(
                   onPressed: () {

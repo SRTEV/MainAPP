@@ -135,6 +135,7 @@ class Controller extends ChangeNotifier {
     }
   }
 
+
   void startVehiclePolling() {
     _vehicleTimer?.cancel();
     _vehicleTimer = Timer.periodic(const Duration(seconds: 5), (_) => fetchVehicles());
@@ -148,7 +149,6 @@ class Controller extends ChangeNotifier {
     double remainingWh = capacityWh * (vehicle.batteryLevel / 100);
     return remainingWh / vehicle.electricityConsumption;
   }
-
 
 
 
