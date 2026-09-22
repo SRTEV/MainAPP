@@ -12,18 +12,19 @@ import 'package:mainapp/Controllers/AuthController.dart';
 import 'package:mainapp/Controllers/RentalController.dart';
 import 'package:mainapp/Controllers/ScanController.dart';
 import 'package:provider/provider.dart';
+
 import '../Controllers/ChallangeController.dart';
 import '../Controllers/Controller.dart';
 import '../Controllers/PaymentController.dart';
 import '../Controllers/UserController.dart';
 import '../Controllers/ZoneController.dart';
+import '../Modules/Notifications.dart';
 import 'Blocked.dart';
 import 'Challanges.dart';
 import 'ContactSupport.dart';
 import 'History.dart';
 import 'Profile.dart';
 import 'ScannerQr.dart';
-import '../Modules/Notifications.dart';
 
 class MapPage extends StatefulWidget {
   const MapPage({super.key});

@@ -19,10 +19,10 @@ import '../Modules/Notifications.dart';
 import '../ViewModels/Blocked.dart';
 import '../ViewModels/ContactSupport.dart';
 import '../ViewModels/ScannerQr.dart';
+import 'AdminCalls.dart';
 import 'RepairmanProfilePage.dart';
 import 'ReportWork.dart';
 import 'StartWork.dart';
-
 class Repairmanmap extends StatefulWidget {
   const Repairmanmap({super.key});
 
@@ -228,7 +228,42 @@ class RepairmanmapState extends State<Repairmanmap>
     if (!mounted) return;
 
     if (index == 0) {
-      debugPrint("Admin calls button clicked");
+      final selectedVehicleFromCall = await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) =>
+              AdminCallsPage(
+                token: context
+                    .read<AuthController>()
+                    .token!,
+              ),
+        ),
+      );
+
+      if (selectedVehicleFromCall != null && mounted) {
+        final vehicleController = context.read<Controller>();
+
+        dynamic latestVehicle;
+
+        try {
+          latestVehicle = vehicleController.vehicles.firstWhere(
+                (v) => v.id == selectedVehicleFromCall.id,
+          );
+        } catch (_) {
+          latestVehicle = selectedVehicleFromCall;
+        }
+
+        setState(() {
+          _selectedVehicle = latestVehicle;
+          _startedRepair = null;
+          Fallow = false;
+        });
+
+        _mapController.move(
+          latestVehicle.position,
+          18.0,
+        );
+      }
     } else if (index == 1) {
       // Чекаємо на повернення самоката з екрана Startwork по кнопці GO
       final selectedVehicleFromWork = await Navigator.push(
@@ -865,23 +900,20 @@ class RepairmanmapState extends State<Repairmanmap>
                     children: [
                       ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: needsCheck ? Colors.white : Colors
-                              .grey.shade300,
+                          backgroundColor: Colors.white,
                           foregroundColor: needsCheck ? Colors.black : Colors
                               .grey,
                           elevation: 0,
                           padding: const EdgeInsets.symmetric(
                               horizontal: 16, vertical: 10),
                           side: BorderSide(
-                              color: needsCheck ? Colors.black : Colors.grey,
+                              color: Colors.black,
                               width: 1.5),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10),
                           ),
                         ),
-                        onPressed: !needsCheck
-                            ? null
-                            : () async {
+                        onPressed: () async {
                           await _checkUserBlockStatus();
                           if (!mounted) return;
 
@@ -902,7 +934,7 @@ class RepairmanmapState extends State<Repairmanmap>
                                   .scanVehicle(scannedCode, token);
 
                               if (matchedVehicle != null && mounted) {
-                                if (matchedVehicle.status == 'NeedCheck') {
+
                                   dynamic fullVehicle;
                                   try {
                                     fullVehicle = vehicleController.vehicles
@@ -929,7 +961,7 @@ class RepairmanmapState extends State<Repairmanmap>
                                       _startedRepair = fullVehicle;
                                     });
                                   }
-                                } else {
+                                  else {
                                   showTopNotification(
                                     context,
                                     "This vehicle does not need a check (Status: ${matchedVehicle
@@ -943,7 +975,9 @@ class RepairmanmapState extends State<Repairmanmap>
                             }
                           }
                         },
-                        child: Text("Start the repair",
+                        child:
+
+                        Text(needsCheck ? "Start the repair" : "Change status",
                           style: TextStyle(
                               fontWeight: FontWeight.w800, fontSize: 14),
                         ),

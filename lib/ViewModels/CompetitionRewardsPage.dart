@@ -7,7 +7,7 @@ import '../Controllers/ChallangeController.dart';
 
 class Competitionrewardspage extends StatefulWidget {
   final int userId;
-  final int competitionId; // Залишаємо для сумісності
+  final int competitionId;
 
   const Competitionrewardspage({
     super.key,
@@ -45,16 +45,14 @@ class _CompetitionrewardspageState extends State<Competitionrewardspage> {
                   child: CircularProgressIndicator(color: Colors.black));
             }
 
-            // Поточна дата (знижуємо до півночі для точного порівняння)
-            final now = DateTime(2026, 9, 20);
-
             // Фільтруємо список: залишаємо лише ті змагання, термін яких вже минув (endDate <= поточна дата)
             final results = controller.allUserResults.where((result) {
               if (result.endDate == null) return false;
               try {
                 final endDate = DateTime.parse(result.endDate!);
                 // Перевіряємо, чи дата закінчення раніша або дорівнює сьогоднішній
-                return endDate.isBefore(now) || endDate.isAtSameMomentAs(now);
+                return endDate.isBefore(DateTime.now()) ||
+                    endDate.isAtSameMomentAs(DateTime.now());
               } catch (_) {
                 return false;
               }

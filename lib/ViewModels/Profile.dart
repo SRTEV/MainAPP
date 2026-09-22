@@ -397,39 +397,23 @@ class _ProfileState extends State<Profile> {
                   "Your Prizes",
                   Colors.black,
                       () async {
-                        final challengeController = context.read<
-                            Challangecontroller>();
                         final userId = authCtrl.userId;
                         final token = authCtrl.token;
 
                         if (userId != null && token != null) {
-                          await challengeController.fetchAllUserResults(
-                              token, userId);
-
-                          int? targetCompetitionId = challengeController
-                              .competitionId;
-
-                          if (targetCompetitionId == null &&
-                              challengeController.allUserResults.isNotEmpty) {
-                            targetCompetitionId =
-                                challengeController.allUserResults.first
-                                    .competitionId;
-                          }
-
-                          if (targetCompetitionId != null && mounted) {
+                          // Просто переходимо на сторінку нагород, оскільки вона сама
+                          // завантажує всі результати за userId всередині свого initState.
+                          if (mounted) {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (context) =>
                                 Competitionrewardspage(
                                   userId: userId,
-                                  competitionId: targetCompetitionId!,
+                                  competitionId: 0, // Передаємо дефолтне значення, раз воно там не використовується для запиту
                                 ),
                           ),
                         );
-                          } else {
-                            _showTopNotification(
-                                context, "No challenges were found");
                           }
                         } else {
                           _showTopNotification(

@@ -191,7 +191,6 @@ class Challangecontroller extends ChangeNotifier {
             return isUnusedB ? 1 : -1;
           }
 
-          // Якщо статус однаковий — сортуємо за датою (найновіші перші)
           final dateA = DateTime.tryParse(a.startDate ?? '') ?? DateTime(2000);
           final dateB = DateTime.tryParse(b.startDate ?? '') ?? DateTime(2000);
 

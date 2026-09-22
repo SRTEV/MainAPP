@@ -105,10 +105,9 @@ class _RepairmanProfileState extends State<RepairmanProfile> {
                         ),
                       ),
                     ],
-                  ]),
-              ),,
-
-              const Spacer(flex: 3)Align(
+                  ]),,
+              )const Spacer(flex: 3),
+              Align(
                 alignment: Alignment.centerRight,
                 child: TextButton(
                   onPressed: () {
