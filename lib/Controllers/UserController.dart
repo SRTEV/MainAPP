@@ -21,6 +21,9 @@ class UserController extends ChangeNotifier {
   String? CardNumb;
   String? cardExpiryDate;
   String? cardCvv;
+  final Map<int, String> _addressCache = {};
+  final Set<int> _loadingAddresses = {};
+
 
   List<dynamic> adminCallsList = [];
 
@@ -361,4 +364,6 @@ class UserController extends ChangeNotifier {
       }
     } catch (_) {}
   }
+
+
 }

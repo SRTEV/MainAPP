@@ -1,8 +1,5 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:http/http.dart' as http;
 import 'package:mainapp/Controllers/AuthController.dart';
 import 'package:provider/provider.dart';
 
@@ -20,9 +17,6 @@ class _StartworkState extends State<Startwork> {
   int _selectedTab = 0;
   bool _isLoading = true;
 
-  final Map<int, String> _addressCache = {};
-  final Set<int> _loadingAddresses = {};
-
   @override
   void initState() {
     super.initState();
@@ -33,7 +27,7 @@ class _StartworkState extends State<Startwork> {
       await controller.fetchVehicles();
       controller.startVehiclePolling();
 
-      await _loadAddressesForVehicles(controller.vehicles);
+      await controller.loadAddressesForVehicles(controller.vehicles);
 
       if (mounted) {
         setState(() {
@@ -43,102 +37,6 @@ class _StartworkState extends State<Startwork> {
     });
   }
 
-//zalupa zalupa zalupa perenesty w kontroller 
-  Future<void> _loadAddressesForVehicles(List<VehicleModel> vehicles,) async {
-    for (final vehicle in vehicles) {
-      if (!_addressCache.containsKey(vehicle.id) &&
-          !_loadingAddresses.contains(vehicle.id)) {
-        _loadingAddresses.add(vehicle.id);
-        _fetchAndCacheAddress(vehicle);
-      }
-    }
-  }
-
-  Future<void> _fetchAndCacheAddress(VehicleModel vehicle) async {
-    try {
-      final lat = vehicle.position.latitude;
-      final lon = vehicle.position.longitude;
-
-      if (lat == 0.0 && lon == 0.0) {
-        _addressCache[vehicle.id] = "Coordinates missing";
-        return;
-      }
-
-      final url = Uri.parse(
-        'https://nominatim.openstreetmap.org/reverse'
-            '?format=json'
-            '&lat=$lat'
-            '&lon=$lon'
-            '&zoom=18'
-            '&addressdetails=1',
-      );
-
-      final response = await http.get(
-        url,
-        headers: {
-          'User-Agent': 'FlutterRepairApp/1.0',
-        },
-      );
-
-      if (response.statusCode == 200) {
-        final data = json.decode(
-          utf8.decode(response.bodyBytes),
-        );
-
-        final address = data['address'];
-
-        if (address != null) {
-          final String street =
-              address['road'] ??
-                  address['pedestrian'] ??
-                  address['suburb'] ??
-                  address['neighbourhood'] ??
-                  '';
-
-          final String houseNumber =
-              address['house_number'] ?? '';
-
-          if (street.isNotEmpty) {
-            final String formattedStreet =
-            street.toLowerCase().startsWith('ul')
-                ? street
-                : "Str. $street";
-
-            _addressCache[vehicle.id] =
-            "$formattedStreet"
-                "${houseNumber.isNotEmpty ? ' $houseNumber' : ''}";
-          } else {
-            _addressCache[vehicle.id] =
-            "Lat: ${lat.toStringAsFixed(4)}, "
-                "Lon: ${lon.toStringAsFixed(4)}";
-          }
-        } else {
-          _addressCache[vehicle.id] =
-          "Lat: ${lat.toStringAsFixed(4)}, "
-              "Lon: ${lon.toStringAsFixed(4)}";
-        }
-      } else {
-        _addressCache[vehicle.id] =
-        "Lat: ${lat.toStringAsFixed(4)}, "
-            "Lon: ${lon.toStringAsFixed(4)}";
-      }
-    } catch (e) {
-      debugPrint(
-        "Error fetching address from OpenStreetMap: $e",
-      );
-
-      _addressCache[vehicle.id] =
-      "Lat: ${vehicle.position.latitude.toStringAsFixed(4)}, "
-          "Lon: ${vehicle.position.longitude.toStringAsFixed(4)}";
-    } finally {
-      _loadingAddresses.remove(vehicle.id);
-
-      if (mounted) {
-        setState(() {});
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Consumer<Controller>(
@@ -146,7 +44,7 @@ class _StartworkState extends State<Startwork> {
           Controller vehicleController,
           Widget? child,) {
         if (!_isLoading) {
-          _loadAddressesForVehicles(
+          vehicleController.loadAddressesForVehicles(
             vehicleController.vehicles,
           );
         }
@@ -162,9 +60,6 @@ class _StartworkState extends State<Startwork> {
               battery < 15;
         }).toList();
 
-        // Remont:
-        // NeedCheck + battery >= 15%
-        // OR repair/broken/etc.
         final remontList =
         vehicleController.vehicles.where((v) {
           final statusLower = v.status.toLowerCase();
@@ -174,15 +69,7 @@ class _StartworkState extends State<Startwork> {
               statusLower.contains('needcheck') &&
                   battery >= 15;
 
-          final bool isRemontStatus =
-              statusLower.contains('remont') ||
-                  statusLower.contains('broken') ||
-                  statusLower.contains('repair') ||
-                  statusLower.contains('damaged') ||
-                  statusLower.contains('malfunction');
-
-          return isNeedCheckHighBattery ||
-              isRemontStatus;
+          return isNeedCheckHighBattery;
         }).toList();
 
         return Scaffold(
@@ -340,10 +227,12 @@ class _StartworkState extends State<Startwork> {
                                 ? _buildVehicleList(
                               chargingList,
                               context,
+                              vehicleController,
                             )
                                 : _buildVehicleList(
                               remontList,
                               context,
+                              vehicleController,
                             ),
                           ),
                         ],
@@ -360,7 +249,8 @@ class _StartworkState extends State<Startwork> {
   }
 
   Widget _buildVehicleList(List<VehicleModel> items,
-      BuildContext context,) {
+      BuildContext context,
+      Controller vehicleController,) {
     if (items.isEmpty) {
       // Беремо AuthController тут, а не всередині children.
       final auth = context.read<AuthController>();
@@ -417,7 +307,7 @@ class _StartworkState extends State<Startwork> {
         final vehicle = items[index];
 
         final address =
-            _addressCache[vehicle.id] ??
+            vehicleController.addressCache[vehicle.id] ??
                 "Loading address...";
 
         return Container(

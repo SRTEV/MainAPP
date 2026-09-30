@@ -57,6 +57,8 @@ class VehicleModel {
 
 class Controller extends ChangeNotifier {
   List<VehicleModel> vehicles = [];
+  final Map<int, String> addressCache = {};
+  final Set<int> _loadingAddresses = {};
   Timer? _vehicleTimer;
   String get serverApi => dotenv.env['SERVER']!;
   List<String> get vehicleTypes {
@@ -150,7 +152,96 @@ class Controller extends ChangeNotifier {
     return remainingWh / vehicle.electricityConsumption;
   }
 
+  Future<void> loadAddressesForVehicles(List<VehicleModel> vehicles) async {
+    for (final vehicle in vehicles) {
+      if (!addressCache.containsKey(vehicle.id) &&
+          !_loadingAddresses.contains(vehicle.id)) {
+        _loadingAddresses.add(vehicle.id);
+        fetchAndCacheAddress(vehicle);
+      }
+    }
+  }
 
+  Future<void> fetchAndCacheAddress(VehicleModel vehicle) async {
+    try {
+      final lat = vehicle.position.latitude;
+      final lon = vehicle.position.longitude;
 
+      if (lat == 0.0 && lon == 0.0) {
+        addressCache[vehicle.id] = "Coordinates missing";
+        notifyListeners();
+        return;
+      }
 
+      final url = Uri.parse(
+        'https://nominatim.openstreetmap.org/reverse'
+            '?format=json'
+            '&lat=$lat'
+            '&lon=$lon'
+            '&zoom=18'
+            '&addressdetails=1',
+      );
+
+      final response = await http.get(
+        url,
+        headers: {
+          'User-Agent': 'FlutterRepairApp/1.0',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(
+          utf8.decode(response.bodyBytes),
+        );
+
+        final address = data['address'];
+
+        if (address != null) {
+          final String street =
+              address['road'] ??
+                  address['pedestrian'] ??
+                  address['suburb'] ??
+                  address['neighbourhood'] ??
+                  '';
+
+          final String houseNumber =
+              address['house_number'] ?? '';
+
+          if (street.isNotEmpty) {
+            final String formattedStreet =
+            street.toLowerCase().startsWith('ul')
+                ? street
+                : "Str. $street";
+
+            addressCache[vehicle.id] =
+            "$formattedStreet"
+                "${houseNumber.isNotEmpty ? ' $houseNumber' : ''}";
+          } else {
+            addressCache[vehicle.id] =
+            "Lat: ${lat.toStringAsFixed(4)}, "
+                "Lon: ${lon.toStringAsFixed(4)}";
+          }
+        } else {
+          addressCache[vehicle.id] =
+          "Lat: ${lat.toStringAsFixed(4)}, "
+              "Lon: ${lon.toStringAsFixed(4)}";
+        }
+      } else {
+        addressCache[vehicle.id] =
+        "Lat: ${lat.toStringAsFixed(4)}, "
+            "Lon: ${lon.toStringAsFixed(4)}";
+      }
+    } catch (e) {
+      debugPrint(
+        "Error fetching address from OpenStreetMap: $e",
+      );
+
+      addressCache[vehicle.id] =
+      "Lat: ${vehicle.position.latitude.toStringAsFixed(4)}, "
+          "Lon: ${vehicle.position.longitude.toStringAsFixed(4)}";
+    } finally {
+      _loadingAddresses.remove(vehicle.id);
+      notifyListeners();
+    }
+  }
 }

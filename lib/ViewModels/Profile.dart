@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:mainapp/Controllers/ChallangeController.dart';
 import 'package:provider/provider.dart';
 
 import '../Controllers/AuthController.dart';
@@ -401,8 +400,6 @@ class _ProfileState extends State<Profile> {
                         final token = authCtrl.token;
 
                         if (userId != null && token != null) {
-                          // Просто переходимо на сторінку нагород, оскільки вона сама
-                          // завантажує всі результати за userId всередині свого initState.
                           if (mounted) {
                         Navigator.push(
                           context,
@@ -410,7 +407,7 @@ class _ProfileState extends State<Profile> {
                             builder: (context) =>
                                 Competitionrewardspage(
                                   userId: userId,
-                                  competitionId: 0, // Передаємо дефолтне значення, раз воно там не використовується для запиту
+                                  competitionId: 0,
                                 ),
                           ),
                         );

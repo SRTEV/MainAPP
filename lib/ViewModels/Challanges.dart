@@ -16,20 +16,27 @@ class Challanges extends StatefulWidget {
 class ChallangesState extends State<Challanges> {
   String? selectedCategoryName;
   int? selectedVehicleTypeId;
+
   final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final vehicleController = context.read<Controller>();
+
       vehicleController.fetchVehicles().then((_) {
+        if (!mounted) return;
+
         if (vehicleController.vehicles.isNotEmpty) {
           setState(() {
             selectedCategoryName = vehicleController.vehicles.first.type;
+
             selectedVehicleTypeId =
                 vehicleController.vehicles.first.vehicleTypeId;
           });
+
           _loadCompetitionData();
         }
       });
@@ -59,13 +66,14 @@ class ChallangesState extends State<Challanges> {
     final competitionVm = context.watch<Challangecontroller>();
     final vehicleController = context.watch<Controller>();
 
-    final List<String> availableTypes = vehicleController.vehicleTypes;
+    final List<String> availableTypes = vehicleController.vehicleTypes
+        .cast<String>();
 
-    // Перевіряємо, чи всі нагороди (або поточний статус) мають rewardAmount == 0
-    // (Адаптуйте під структуру ваших даних, якщо у вас є конкретне поле суми нагороди у competitionVm)
-    bool isRewardUsed = competitionVm.rewardTypes.isNotEmpty &&
+    final bool isRewardUsed =
+        competitionVm.rewardTypes.isNotEmpty &&
         competitionVm.rewardTypes.every((reward) {
           final amount = reward['reward_amount'] ?? reward['rewardAmount'] ?? 1;
+
           return amount == 0;
         });
 
@@ -74,223 +82,223 @@ class ChallangesState extends State<Challanges> {
       body: SafeArea(
         child: competitionVm.isLoading
             ? const Center(
-          child: CircularProgressIndicator(color: Colors.black),
-        )
+                child: CircularProgressIndicator(color: Colors.black),
+              )
             : SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 24.0,
-            vertical: 16.0,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  IconButton(
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                    icon: const Icon(
-                      Icons.arrow_circle_left_outlined,
-                      size: 36,
-                      color: Colors.black,
-                    ),
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    "Challenges",
-                    style: GoogleFonts.inter(
-                      fontSize: 26,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.black,
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.black,
-                  borderRadius: BorderRadius.circular(24),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24.0,
+                  vertical: 16.0,
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          "Select your category:",
-                          style: GoogleFonts.inter(
-                            color: Colors.grey.shade400,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
+                        IconButton(
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          icon: const Icon(
+                            Icons.arrow_circle_left_outlined,
+                            size: 36,
+                            color: Colors.black,
                           ),
+                          onPressed: () => Navigator.of(context).pop(),
                         ),
-                        Row(
-                          children: [
-                            if (isRewardUsed)
-                              Container(
-                                margin: const EdgeInsets.only(right: 6),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.red.shade800,
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text(
-                                  "USED",
-                                  style: GoogleFonts.inter(
-                                    color: Colors.white,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            if (competitionVm.isEnded)
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.red.shade800,
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text(
-                                  "ENDED",
-                                  style: GoogleFonts.inter(
-                                    color: Colors.white,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                          ],
+                        const SizedBox(width: 12),
+                        Text(
+                          "Challenges",
+                          style: GoogleFonts.inter(
+                            fontSize: 26,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.black,
+                            letterSpacing: -0.5,
+                          ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 24),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color: Colors.grey.shade300,
-                        borderRadius: BorderRadius.circular(16),
+                        color: Colors.black,
+                        borderRadius: BorderRadius.circular(24),
                       ),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<String>(
-                          value: availableTypes.contains(
-                            selectedCategoryName,
-                          )
-                              ? selectedCategoryName
-                              : null,
-                          isExpanded: true,
-                          dropdownColor: Colors.white,
-                          icon: const Icon(
-                            Icons.keyboard_arrow_down,
-                            color: Colors.black,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                "Select your category:",
+                                style: GoogleFonts.inter(
+                                  color: Colors.grey.shade400,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              Row(
+                                children: [
+                                  if (isRewardUsed)
+                                    Container(
+                                      margin: const EdgeInsets.only(right: 6),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.red.shade800,
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Text(
+                                        "USED",
+                                        style: GoogleFonts.inter(
+                                          color: Colors.white,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  if (competitionVm.isEnded)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.red.shade800,
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Text(
+                                        "ENDED",
+                                        style: GoogleFonts.inter(
+                                          color: Colors.white,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ],
                           ),
-                          style: GoogleFonts.inter(
-                            color: Colors.black,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
+                          const SizedBox(height: 10),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade300,
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<String>(
+                                value:
+                                    availableTypes.contains(
+                                      selectedCategoryName,
+                                    )
+                                    ? selectedCategoryName
+                                    : null,
+                                isExpanded: true,
+                                dropdownColor: Colors.white,
+                                icon: const Icon(
+                                  Icons.keyboard_arrow_down,
+                                  color: Colors.black,
+                                ),
+                                style: GoogleFonts.inter(
+                                  color: Colors.black,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                                items: availableTypes
+                                    .map<DropdownMenuItem<String>>((
+                                      String typeName,
+                                    ) {
+                                      return DropdownMenuItem<String>(
+                                        value: typeName,
+                                        child: Text(typeName),
+                                      );
+                                    })
+                                    .toList(),
+                                onChanged: (String? newTypeName) {
+                                  if (newTypeName == null) return;
+
+                                  setState(() {
+                                    selectedCategoryName = newTypeName;
+
+                                    final matchedVehicle = vehicleController
+                                        .vehicles
+                                        .firstWhere(
+                                          (v) => v.type == newTypeName,
+                                          orElse: () =>
+                                              vehicleController.vehicles.first,
+                                        );
+
+                                    selectedVehicleTypeId =
+                                        matchedVehicle.vehicleTypeId;
+                                  });
+
+                                  _loadCompetitionData();
+                                },
+                              ),
+                            ),
                           ),
-                          items: availableTypes.map((String typeName) {
-                            return DropdownMenuItem<String>(
-                              value: typeName,
-                              child: Text(typeName),
-                            );
-                          }).toList(),
-                          onChanged: (String? newTypeName) {
-                            if (newTypeName != null) {
-                              setState(() {
-                                selectedCategoryName = newTypeName;
-                                final matchedVehicle = vehicleController
-                                    .vehicles
-                                    .firstWhere(
-                                      (v) => v.type == newTypeName,
-                                  orElse: () =>
-                                  vehicleController
-                                      .vehicles
-                                      .first,
-                                );
-                                selectedVehicleTypeId =
-                                    matchedVehicle.vehicleTypeId;
-                              });
-                              _loadCompetitionData();
-                            }
-                          },
-                        ),
+                          const SizedBox(height: 24),
+                          Text(
+                            competitionVm.message.isNotEmpty &&
+                                    competitionVm.competitionId == null
+                                ? competitionVm.message
+                                : (competitionVm.description ??
+                                      "Select category to view challenge"),
+                            style: GoogleFonts.inter(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(height: 24),
-                    Text(
-                      competitionVm.message.isNotEmpty &&
-                          competitionVm.competitionId == null
-                          ? competitionVm.message
-                          : (competitionVm.description ??
-                          "Select category to view challenge"),
-                      style: GoogleFonts.inter(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
+                    if (competitionVm.competitionId != null) ...[
+                      ...competitionVm.rewardTypes.asMap().entries.map((entry) {
+                        final int index = entry.key;
+                        final reward = entry.value;
 
-              if (competitionVm.competitionId != null) ...[
-                ...competitionVm.rewardTypes
-                    .asMap()
-                    .entries
-                    .map((entry) {
-                  int index = entry.key;
-                  var reward = entry.value;
-
-                  String icon;
+                        String icon;
                   String positionText;
 
-                  if (index == 0) {
-                    icon = "🥇";
-                    positionText = "1 place";
-                  } else if (index == 1) {
-                    icon = "🥈";
-                    positionText = "2-4 places";
+                        if (index == 0) {
+                          icon = "🥇";
+                          positionText = "1 place";
+                        } else if (index == 1) {
+                          icon = "🥈";
+                          positionText = "2-4 places";
+                        } else {
+                          icon = "🥉";
+                          positionText = "5 place";
+                        }
+
+                        final String name = reward['name']?.toString() ?? "";
+
+                  final dynamic unit = reward['unit'] ?? "";
+
+                  String rewardText;
+
+                  if (name.toLowerCase().contains('discount')) {
+                    rewardText = "$positionText — $name: $unit%";
+                  } else if (name.toLowerCase().contains('free ride')) {
+                    rewardText =
+                    "$positionText — $name: One Free Ride at tariff";
                   } else {
-                    icon = "🥉";
-                    positionText = "5 place";
+                    rewardText = "$positionText — $name: $unit km";
                   }
 
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 12),
-                    child: _buildRewardRow(
-                      icon,
-                          () {
-                        final name = reward['name'].toString().toLowerCase();
-                        final unit = reward['unit'] ?? '';
-
-                        if (name.contains('discount')) {
-                          return "$positionText — ${reward['name']}: $unit%";
-                        } else if (name.contains('free ride')) {
-                          return "$positionText — ${reward['name']}: One Free Ride at tariff";
-                        } else {
-                          return "$positionText — ${reward['name']}: $unit km";
-                        }
-                      }(),
-                    ),
+                    child: _buildRewardRow(icon, rewardText),
                   );
                 }),
-
                 const SizedBox(height: 24),
-
                 Container(
                   width: double.infinity,
                   constraints: const BoxConstraints(maxHeight: 300),
@@ -346,142 +354,140 @@ class ChallangesState extends State<Challanges> {
                             child: ListView.builder(
                               controller: _scrollController,
                               shrinkWrap: true,
-                              itemCount: competitionVm
-                                  .leaderboard
-                                  .length,
+                              itemCount:
+                              competitionVm.leaderboard.length,
                               itemBuilder: (context, index) {
                                 final entry = competitionVm
                                     .leaderboard[index];
 
-                                final int rank =
-                                    entry['rank'] ??
-                                        (index + 1);
-                                final String name =
-                                    entry['name'] ?? 'User';
-                                final int score =
-                                    entry['score'] ?? 0;
-                                final int entryUserId =
-                                    entry['userId'] ?? 0;
+                                            final int rank =
+                                                entry['rank'] ?? (index + 1);
 
-                                final authVm = context
+                                            final String name =
+                                                entry['name'] ?? 'User';
+
+                                            final int score =
+                                                entry['score'] ?? 0;
+
+                                            final int entryUserId =
+                                                entry['userId'] ?? 0;
+
+                                            final authVm = context
                                     .read<AuthController>();
+
                                 final bool isMe =
                                     entryUserId == authVm.userId;
 
-                                return Container(
-                                  margin: const EdgeInsets.only(
-                                    bottom: 8,
-                                  ),
-                                  padding:
-                                  const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 12,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: isMe
-                                        ? Colors.white
-                                        : Colors.transparent,
-                                    borderRadius:
-                                    BorderRadius.circular(
-                                      16,
-                                    ),
-                                    border: isMe
-                                        ? Border.all(
-                                      color: Colors
-                                          .blue
-                                          .shade300,
-                                      width: 1.5,
-                                    )
-                                        : Border.all(
-                                      color: Colors
-                                          .transparent,
-                                    ),
-                                  ),
-                                  child: Row(
-                                    mainAxisAlignment:
-                                    MainAxisAlignment
-                                        .spaceBetween,
-                                    children: [
-                                      Expanded(
-                                        child: Row(
-                                          children: [
-                                            Text(
-                                              "$rank. ",
-                                              style: GoogleFonts
-                                                  .inter(
-                                                fontSize: 16,
-                                                fontWeight:
-                                                FontWeight
-                                                    .w700,
-                                                color: Colors
-                                                    .black,
+                                            return Container(
+                                              margin: const EdgeInsets.only(
+                                                bottom: 8,
                                               ),
-                                            ),
-                                            Flexible(
-                                              child: Text(
-                                                name,
-                                                overflow:
-                                                TextOverflow
-                                                    .ellipsis,
-                                                style: GoogleFonts
-                                                    .inter(
-                                                  fontSize: 16,
-                                                  fontWeight: isMe
-                                                      ? FontWeight
-                                                      .w800
-                                                      : FontWeight
-                                                      .w600,
-                                                  color: Colors
-                                                      .black,
-                                                ),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 16,
+                                                    vertical: 12,
+                                                  ),
+                                              decoration: BoxDecoration(
+                                                color: isMe
+                                                    ? Colors.white
+                                                    : Colors.transparent,
+                                                borderRadius:
+                                                    BorderRadius.circular(16),
+                                                border: isMe
+                                                    ? Border.all(
+                                                        color: Colors
+                                                            .blue
+                                                            .shade300,
+                                                        width: 1.5,
+                                                      )
+                                                    : Border.all(
+                                                        color:
+                                                            Colors.transparent,
+                                                      ),
                                               ),
-                                            ),
-                                            if (isMe) ...[
-                                              const SizedBox(
-                                                width: 4,
+                                              child: Row(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment
+                                                        .spaceBetween,
+                                                children: [
+                                                  Expanded(
+                                                    child: Row(
+                                                      children: [
+                                                        Text(
+                                                          "$rank. ",
+                                                          style:
+                                                              GoogleFonts.inter(
+                                                                fontSize: 16,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w700,
+                                                                color: Colors
+                                                                    .black,
+                                                              ),
+                                                        ),
+                                                        Flexible(
+                                                          child: Text(
+                                                            name,
+                                                            overflow:
+                                                                TextOverflow
+                                                                    .ellipsis,
+                                                            style: GoogleFonts.inter(
+                                                              fontSize: 16,
+                                                              fontWeight: isMe
+                                                                  ? FontWeight
+                                                                        .w800
+                                                                  : FontWeight
+                                                                        .w600,
+                                                              color:
+                                                                  Colors.black,
+                                                            ),
+                                                          ),
+                                                        ),
+                                                        if (isMe) ...[
+                                                          const SizedBox(
+                                                            width: 4,
+                                                          ),
+                                                          Text(
+                                                            "(You)",
+                                                            style:
+                                                                GoogleFonts.inter(
+                                                                  fontSize: 16,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w800,
+                                                                  color: Colors
+                                                                      .black,
+                                                                ),
+                                                          ),
+                                                        ],
+                                                      ],
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 8),
+                                                  Text(
+                                                    "$score",
+                                                    style: GoogleFonts.inter(
+                                                      fontSize: 16,
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                      color: Colors.black,
+                                                    ),
+                                                  ),
+                                                ],
                                               ),
-                                              Text(
-                                                "(You)",
-                                                style: GoogleFonts
-                                                    .inter(
-                                                  fontSize: 16,
-                                                  fontWeight:
-                                                  FontWeight
-                                                      .w800,
-                                                  color: Colors
-                                                      .black,
-                                                ),
-                                              ),
-                                            ],
-                                          ],
+                                            );
+                                          },
                                         ),
                                       ),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        "$score",
-                                        style: GoogleFonts
-                                            .inter(
-                                          fontSize: 16,
-                                          fontWeight:
-                                          FontWeight.w700,
-                                          color: Colors.black,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              },
+                              ),
                             ),
-                          ),
+                          ],
                         ),
                       ),
                     ],
-                  ),
+                  ],
                 ),
-              ],
-            ],
-          ),
-        ),
+              ),
       ),
     );
   }

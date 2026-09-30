@@ -105,14 +105,10 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       if (mounted) {
         await vehicleController.fetchVehicles();
         vehicleController.startVehiclePolling();
-
-        // Якщо є доступні типи транспорту, автоматично фечимо останній челендж для першого типу
         if (vehicleController.vehicles.isNotEmpty && token != null) {
           final firstVehicleTypeId = vehicleController.vehicles.first
               .vehicleTypeId;
           await compCon.fetchLatestChallenge(firstVehicleTypeId, token);
-
-          // Завантажуємо повний список результатів користувача без прив'язки до одного ID
           if (userid != null) {
             await compCon.fetchAllUserResults(token, userid);
           }

@@ -23,6 +23,7 @@ import 'AdminCalls.dart';
 import 'RepairmanProfilePage.dart';
 import 'ReportWork.dart';
 import 'StartWork.dart';
+
 class Repairmanmap extends StatefulWidget {
   const Repairmanmap({super.key});
 
@@ -55,8 +56,9 @@ class RepairmanmapState extends State<Repairmanmap>
   late Animation<double> _pulseAnimation;
 
   IconData _getBatteryIcon(dynamic levelVal) {
-    int level = levelVal is num ? levelVal.toInt() : int.tryParse(
-        levelVal?.toString() ?? '0') ?? 0;
+    int level = levelVal is num
+        ? levelVal.toInt()
+        : int.tryParse(levelVal?.toString() ?? '0') ?? 0;
     if (level >= 80) return Icons.battery_full;
     if (level >= 60) return Icons.battery_6_bar;
     if (level >= 40) return Icons.battery_4_bar;
@@ -67,11 +69,13 @@ class RepairmanmapState extends State<Repairmanmap>
   @override
   void initState() {
     super.initState();
-    _pulseController =
-    AnimationController(duration: const Duration(seconds: 2), vsync: this)
-      ..repeat(reverse: true);
+    _pulseController = AnimationController(
+      duration: const Duration(seconds: 2),
+      vsync: this,
+    )..repeat(reverse: true);
     _pulseAnimation = Tween<double>(begin: 1.0, end: 1.3).animate(
-        CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut));
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
 
     _ticker = createTicker((elapsed) => _updateSmoothElements());
     _ticker.start();
@@ -84,7 +88,9 @@ class RepairmanmapState extends State<Repairmanmap>
 
       if (mounted) {
         final vehicleController = Provider.of<Controller>(
-            context, listen: false);
+          context,
+          listen: false,
+        );
         await vehicleController.fetchVehicles();
         vehicleController.startVehiclePolling();
       }
@@ -95,9 +101,13 @@ class RepairmanmapState extends State<Repairmanmap>
     if (!mounted) return;
     try {
       final userController = Provider.of<UserController>(
-          context, listen: false);
+        context,
+        listen: false,
+      );
       final authController = Provider.of<AuthController>(
-          context, listen: false);
+        context,
+        listen: false,
+      );
 
       final userid = authController.userId;
       final token = authController.token;
@@ -174,7 +184,8 @@ class RepairmanmapState extends State<Repairmanmap>
     if (permission == LocationPermission.deniedForever) return;
 
     Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.bestForNavigation);
+      desiredAccuracy: LocationAccuracy.bestForNavigation,
+    );
     if (!mounted) return;
 
     final initialLatLng = LatLng(position.latitude, position.longitude);
@@ -187,32 +198,35 @@ class RepairmanmapState extends State<Repairmanmap>
 
     _mapController.move(initialLatLng, 16.0);
 
-    _positionStream = Geolocator.getPositionStream(
-        locationSettings: const LocationSettings(
-            accuracy: LocationAccuracy.bestForNavigation, distanceFilter: 1)
-    ).listen((p) {
-      if (mounted) {
-        final newLatLng = LatLng(p.latitude, p.longitude);
+    _positionStream =
+        Geolocator.getPositionStream(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.bestForNavigation,
+            distanceFilter: 1,
+          ),
+        ).listen((p) {
+          if (mounted) {
+            final newLatLng = LatLng(p.latitude, p.longitude);
 
-        if (_lastPosition != null) {
-          double distanceInMeters = Geolocator.distanceBetween(
-            _lastPosition!.latitude,
-            _lastPosition!.longitude,
-            newLatLng.latitude,
-            newLatLng.longitude,
-          );
+            if (_lastPosition != null) {
+              double distanceInMeters = Geolocator.distanceBetween(
+                _lastPosition!.latitude,
+                _lastPosition!.longitude,
+                newLatLng.latitude,
+                newLatLng.longitude,
+              );
 
-          if (distanceInMeters < 0.5) {
-            return;
+              if (distanceInMeters < 0.5) {
+                return;
+              }
+              _lastPosition = newLatLng;
+            }
+
+            setState(() {
+              targetLocation = newLatLng;
+            });
           }
-          _lastPosition = newLatLng;
-        }
-
-        setState(() {
-          targetLocation = newLatLng;
         });
-      }
-    });
   }
 
   void _initCompass() {
@@ -232,11 +246,7 @@ class RepairmanmapState extends State<Repairmanmap>
         context,
         MaterialPageRoute(
           builder: (context) =>
-              AdminCallsPage(
-                token: context
-                    .read<AuthController>()
-                    .token!,
-              ),
+              AdminCallsPage(token: context.read<AuthController>().token!),
         ),
       );
 
@@ -247,7 +257,7 @@ class RepairmanmapState extends State<Repairmanmap>
 
         try {
           latestVehicle = vehicleController.vehicles.firstWhere(
-                (v) => v.id == selectedVehicleFromCall.id,
+            (v) => v.id == selectedVehicleFromCall.id,
           );
         } catch (_) {
           latestVehicle = selectedVehicleFromCall;
@@ -259,18 +269,13 @@ class RepairmanmapState extends State<Repairmanmap>
           Fallow = false;
         });
 
-        _mapController.move(
-          latestVehicle.position,
-          18.0,
-        );
+        _mapController.move(latestVehicle.position, 18.0);
       }
     } else if (index == 1) {
       // Чекаємо на повернення самоката з екрана Startwork по кнопці GO
       final selectedVehicleFromWork = await Navigator.push(
         context,
-        MaterialPageRoute(
-          builder: (context) => const Startwork(),
-        ),
+        MaterialPageRoute(builder: (context) => const Startwork()),
       );
 
       // Якщо користувач натиснув GO, беремо актуальні дані та переносимо карту на цей самокат
@@ -279,7 +284,7 @@ class RepairmanmapState extends State<Repairmanmap>
         dynamic latestVehicle;
         try {
           latestVehicle = vehicleController.vehicles.firstWhere(
-                (v) => v.id == selectedVehicleFromWork.id,
+            (v) => v.id == selectedVehicleFromWork.id,
           );
         } catch (_) {
           latestVehicle = selectedVehicleFromWork;
@@ -297,9 +302,7 @@ class RepairmanmapState extends State<Repairmanmap>
         context,
         MaterialPageRoute(
           builder: (context) =>
-              RepairmanProfile(
-                hasActiveRepair: _startedRepair != null,
-              ),
+              RepairmanProfile(hasActiveRepair: _startedRepair != null),
         ),
       );
     }
@@ -323,14 +326,14 @@ class RepairmanmapState extends State<Repairmanmap>
 
     if (_selectedVehicle != null) {
       try {
-        _selectedVehicle =
-            vehicles.firstWhere((v) => v.id == _selectedVehicle.id);
+        _selectedVehicle = vehicles.firstWhere(
+          (v) => v.id == _selectedVehicle.id,
+        );
       } catch (_) {}
     }
     if (_startedRepair != null) {
       try {
-        _startedRepair =
-            vehicles.firstWhere((v) => v.id == _startedRepair.id);
+        _startedRepair = vehicles.firstWhere((v) => v.id == _startedRepair.id);
       } catch (_) {}
     }
 
@@ -358,9 +361,10 @@ class RepairmanmapState extends State<Repairmanmap>
             ),
             children: [
               TileLayer(
-                  urlTemplate:
-                  'https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/{z}/{x}/{y}?access_token={accessToken}',
-                  additionalOptions: {'accessToken': mapboxToken}),
+                urlTemplate:
+                    'https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/{z}/{x}/{y}?access_token={accessToken}',
+                additionalOptions: {'accessToken': mapboxToken},
+              ),
               Consumer<ZoneController>(
                 builder: (context, zoneCtrl, child) {
                   return PolygonLayer(
@@ -381,14 +385,17 @@ class RepairmanmapState extends State<Repairmanmap>
               ),
               MarkerLayer(
                 markers: vehicles
-                    .where((v) =>
-                (v.status == 'Available' || v.status == 'NeedCheck') &&
-                    _visibleTypes.contains(v.type))
+                    .where(
+                      (v) =>
+                          (v.status == 'Available' ||
+                              v.status == 'NeedCheck') &&
+                          _visibleTypes.contains(v.type),
+                    )
                     .map((v) {
-                  bool needsCheck = v.status == 'NeedCheck';
-                  String pinAsset = _getVehicleAsset(v.type, needsCheck);
+                      bool needsCheck = v.status == 'NeedCheck';
+                      String pinAsset = _getVehicleAsset(v.type, needsCheck);
 
-                  return Marker(
+                      return Marker(
                     point: v.position,
                     width: 44,
                     height: 44,
@@ -397,45 +404,44 @@ class RepairmanmapState extends State<Repairmanmap>
                       onTap: () async {
                         if (_startedRepair != null) return;
 
-                        await _checkUserBlockStatus();
-                        if (!mounted) return;
+                            await _checkUserBlockStatus();
+                            if (!mounted) return;
 
-                        final token = context
+                            final token = context
                             .read<AuthController>()
                             .token;
                         if (token != null) {
                           await context.read<ZoneController>().fetchZones(
-                              v.vehicleTypeId, token);
+                            v.vehicleTypeId,
+                            token,
+                          );
                         }
 
-                        if (mounted) {
-                          setState(() {
-                            _startedRepair = null;
-                            _selectedVehicle = v;
-                          });
-                        }
-                      },
-                      child: Center(
-                        child: Image.asset(
-                          pinAsset,
-                          width: 44,
-                          height: 44,
+                            if (mounted) {
+                              setState(() {
+                                _startedRepair = null;
+                                _selectedVehicle = v;
+                              });
+                            }
+                          },
+                          child: Center(
+                            child: Image.asset(pinAsset, width: 44, height: 44),
+                          ),
                         ),
-                      ),
-                    ),
-                  );
-                }).toList(),
+                      );
+                    })
+                    .toList(),
               ),
-              MarkerLayer(markers: [
-                Marker(
-                  point: userLocation,
-                  width: 120,
-                  height: 120,
-                  child: IgnorePointer(
-                    child: _buildUserPointer(),
+              MarkerLayer(
+                markers: [
+                  Marker(
+                    point: userLocation,
+                    width: 120,
+                    height: 120,
+                    child: IgnorePointer(child: _buildUserPointer()),
                   ),
-                )
-              ]),
+                ],
+              ),
             ],
           ),
           Positioned(
@@ -452,12 +458,12 @@ class RepairmanmapState extends State<Repairmanmap>
                       backgroundColor: Colors.black,
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20)),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
                     ),
                     onPressed: () =>
                         setState(() => _isFilterOpen = !_isFilterOpen),
-                    child: const Text("Filter",
-                        style: TextStyle(fontSize: 14)),
+                    child: const Text("Filter", style: TextStyle(fontSize: 14)),
                   ),
                 ),
                 if (_isFilterOpen)
@@ -470,45 +476,53 @@ class RepairmanmapState extends State<Repairmanmap>
                     ),
                     child: Column(
                       children: [
-                        ...controller.vehicleTypes.map((type) =>
-                            Theme(
-                              data: Theme.of(context).copyWith(
-                                checkboxTheme: CheckboxThemeData(
-                                  fillColor: WidgetStateProperty.resolveWith(
-                                          (states) =>
-                                      states.contains(
-                                          WidgetState.selected)
-                                          ? Colors.black
-                                          : Colors.grey[300]),
-                                  checkColor:
-                                  WidgetStateProperty.all(Colors.white),
+                        ...controller.vehicleTypes.map(
+                          (type) => Theme(
+                            data: Theme.of(context).copyWith(
+                              checkboxTheme: CheckboxThemeData(
+                                fillColor: WidgetStateProperty.resolveWith(
+                                  (states) =>
+                                      states.contains(WidgetState.selected)
+                                      ? Colors.black
+                                      : Colors.grey[300],
+                                ),
+                                checkColor: WidgetStateProperty.all(
+                                  Colors.white,
                                 ),
                               ),
-                              child: Material(
-                                color: Colors.transparent,
-                                child: CheckboxListTile(
-                                  dense: true,
-                                  visualDensity: const VisualDensity(
-                                      horizontal: -4, vertical: -4),
-                                  contentPadding:
-                                  const EdgeInsets.symmetric(
-                                      horizontal: 5, vertical: 0),
-                                  title: Text(type,
-                                      style: const TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.black)),
-                                  value: _visibleTypes.contains(type),
-                                  controlAffinity:
-                                  ListTileControlAffinity.leading,
-                                  onChanged: (val) =>
-                                      setState(() =>
-                                      val!
-                                          ? _visibleTypes.add(type)
-                                          : _visibleTypes.remove(type)),
+                            ),
+                            child: Material(
+                              color: Colors.transparent,
+                              child: CheckboxListTile(
+                                dense: true,
+                                visualDensity: const VisualDensity(
+                                  horizontal: -4,
+                                  vertical: -4,
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 5,
+                                  vertical: 0,
+                                ),
+                                title: Text(
+                                  type,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black,
+                                  ),
+                                ),
+                                value: _visibleTypes.contains(type),
+                                controlAffinity:
+                                    ListTileControlAffinity.leading,
+                                onChanged: (val) => setState(
+                                  () => val!
+                                      ? _visibleTypes.add(type)
+                                      : _visibleTypes.remove(type),
                                 ),
                               ),
-                            )),
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -553,9 +567,7 @@ class RepairmanmapState extends State<Repairmanmap>
       bottomNavigationBar: SizedBox(
         height: 80,
         child: Theme(
-          data: Theme.of(context).copyWith(
-            canvasColor: Colors.black,
-          ),
+          data: Theme.of(context).copyWith(canvasColor: Colors.black),
           child: BottomNavigationBar(
             type: BottomNavigationBarType.fixed,
             selectedItemColor: Colors.white,
@@ -566,20 +578,26 @@ class RepairmanmapState extends State<Repairmanmap>
             onTap: (index) => _onItemTapped(index, context),
             items: const [
               BottomNavigationBarItem(
-                  icon: Padding(
-                      padding: EdgeInsets.only(bottom: 4),
-                      child: Icon(Icons.assignment_outlined)),
-                  label: 'Admin calls'),
+                icon: Padding(
+                  padding: EdgeInsets.only(bottom: 4),
+                  child: Icon(Icons.assignment_outlined),
+                ),
+                label: 'Admin calls',
+              ),
               BottomNavigationBarItem(
-                  icon: Padding(
-                      padding: EdgeInsets.only(bottom: 4),
-                      child: Icon(Icons.build)),
-                  label: 'Start work'),
+                icon: Padding(
+                  padding: EdgeInsets.only(bottom: 4),
+                  child: Icon(Icons.build),
+                ),
+                label: 'Start work',
+              ),
               BottomNavigationBarItem(
-                  icon: Padding(
-                      padding: EdgeInsets.only(bottom: 4),
-                      child: Icon(Icons.person)),
-                  label: 'Account'),
+                icon: Padding(
+                  padding: EdgeInsets.only(bottom: 4),
+                  child: Icon(Icons.person),
+                ),
+                label: 'Account',
+              ),
             ],
           ),
         ),
@@ -588,27 +606,35 @@ class RepairmanmapState extends State<Repairmanmap>
   }
 
   Widget _buildUserPointer() {
-    return Stack(alignment: Alignment.center, children: [
-      Transform.rotate(
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        Transform.rotate(
           angle: (userHeading * (math.pi / 180)),
-          child: CustomPaint(size: const Size(120, 120), painter: Pointer())),
-      AnimatedBuilder(
+          child: CustomPaint(size: const Size(120, 120), painter: Pointer()),
+        ),
+        AnimatedBuilder(
           animation: _pulseAnimation,
-          builder: (c, _) =>
-              Container(
-                  width: 22 * _pulseAnimation.value,
-                  height: 22 * _pulseAnimation.value,
-                  decoration: BoxDecoration(
-                      color: Colors.blueAccent.withOpacity(0.2),
-                      shape: BoxShape.circle))),
-      Container(
+          builder: (c, _) => Container(
+            width: 22 * _pulseAnimation.value,
+            height: 22 * _pulseAnimation.value,
+            decoration: BoxDecoration(
+              color: Colors.blueAccent.withOpacity(0.2),
+              shape: BoxShape.circle,
+            ),
+          ),
+        ),
+        Container(
           width: 18,
           height: 18,
           decoration: BoxDecoration(
-              color: Colors.blueAccent,
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.white, width: 3)))
-    ]);
+            color: Colors.blueAccent,
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white, width: 3),
+          ),
+        ),
+      ],
+    );
   }
 
   String _getVehicleAsset(String type, bool needsCheck) {
@@ -674,14 +700,15 @@ class RepairmanmapState extends State<Repairmanmap>
                               Text(
                                 "$batteryLevel%",
                                 style: const TextStyle(
-                                    fontSize: 32, fontWeight: FontWeight.w900),
+                                  fontSize: 32,
+                                  fontWeight: FontWeight.w900,
+                                ),
                               ),
                             ],
                           ),
                           const SizedBox(height: 6),
                           Text(
-                            "Battery life ${(batteryLevel * 0.21)
-                                .toStringAsFixed(0)} KM",
+                            "Battery life ${(batteryLevel * 0.21).toStringAsFixed(0)} KM",
                             style: const TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w800,
@@ -689,9 +716,9 @@ class RepairmanmapState extends State<Repairmanmap>
                             ),
                           ),
                           const SizedBox(height: 6),
-                          const Text(
-                            "Status : In remont",
-                            style: TextStyle(
+                          Text(
+                            "Status: ${vehicle.status}",
+                            style: const TextStyle(
                               fontSize: 15,
                               color: Colors.black,
                               fontWeight: FontWeight.w700,
@@ -717,75 +744,48 @@ class RepairmanmapState extends State<Repairmanmap>
                     ],
                   ),
                   const SizedBox(height: 18),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          foregroundColor: Colors.black,
-                          elevation: 0,
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 10),
-                          side: const BorderSide(
-                              color: Colors.black, width: 1.5),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
+                  Center(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: Colors.black,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 10,
                         ),
-                        onPressed: () {
-                          debugPrint(
-                              "Long-term repair clicked for vehicle ${vehicle
-                                  .id}");
-                        },
-                        child: const Text(
-                          "long-term repair",
-                          style: TextStyle(
-                              fontWeight: FontWeight.w800, fontSize: 14),
+                        side: const BorderSide(color: Colors.black, width: 1.5),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
                         ),
                       ),
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          foregroundColor: Colors.black,
-                          elevation: 0,
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 10),
-                          side: const BorderSide(
-                              color: Colors.black, width: 1.5),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
+                      onPressed: () async {
+                        // Відкриваємо екран звіту та передаємо весь об'єкт самоката
+                        final result = await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => Reportwork(vehicle: vehicle),
                           ),
-                        ),
-                        onPressed: () async {
-                          // Відкриваємо екран звіту та передаємо весь об'єкт самоката
-                          final result = await Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  Reportwork(
-                                    vehicle: vehicle,
-                                  ),
-                            ),
-                          );
+                        );
 
-                          // Якщо звіт успішно відправлено, очищаємо стан активного ремонту
-                          if (result != null && mounted) {
-                            setState(() {
-                              _startedRepair = null;
-                            });
-                            context.read<Controller>().fetchVehicles();
-                            context.read<ZoneController>().clearZones();
-                            showTopNotification(context, result.toString());
-                          }
-                        },
-                        child: const Text(
-                          "End remont",
-                          style: TextStyle(
-                              fontWeight: FontWeight.w800, fontSize: 14),
+                        // Якщо звіт успішно відправлено, очищаємо стан активного ремонту
+                        if (result != null && mounted) {
+                          setState(() {
+                            _startedRepair = null;
+                          });
+                          context.read<Controller>().fetchVehicles();
+                          context.read<ZoneController>().clearZones();
+                          showTopNotification(context, result.toString());
+                        }
+                      },
+                      child: const Text(
+                        "End remont",
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 14,
                         ),
                       ),
-                    ],
+                    ),
                   ),
                 ],
               ),
@@ -813,8 +813,9 @@ class RepairmanmapState extends State<Repairmanmap>
             child: Container(
               padding: const EdgeInsets.all(15),
               decoration: BoxDecoration(
-                color: needsCheck ? const Color(0xFFFF8A8A) : const Color(
-                    0xFFD9D9D9),
+                color: needsCheck
+                    ? const Color(0xFFFF8A8A)
+                    : const Color(0xFFD9D9D9),
                 borderRadius: BorderRadius.circular(20),
                 border: needsCheck
                     ? Border.all(color: Colors.black, width: 2)
@@ -848,15 +849,16 @@ class RepairmanmapState extends State<Repairmanmap>
                               Text(
                                 "$batteryLevel%",
                                 style: const TextStyle(
-                                    fontSize: 32, fontWeight: FontWeight.w900),
+                                  fontSize: 32,
+                                  fontWeight: FontWeight.w900,
+                                ),
                               ),
                             ],
                           ),
                           if (needsCheck) ...[
                             const SizedBox(height: 6),
                             Text(
-                              "Battery life ${(batteryLevel * 0.21)
-                                  .toStringAsFixed(0)} KM",
+                              "Battery life ${(batteryLevel * 0.21).toStringAsFixed(0)} KM",
                               style: const TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w800,
@@ -866,9 +868,7 @@ class RepairmanmapState extends State<Repairmanmap>
                           ],
                           const SizedBox(height: 6),
                           Text(
-                            needsCheck
-                                ? "Status: Needs to be checked"
-                                : "Status: ${vehicle.status}",
+                            "Status: ${vehicle.status}",
                             style: const TextStyle(
                               fontSize: 15,
                               color: Colors.black,
@@ -901,14 +901,15 @@ class RepairmanmapState extends State<Repairmanmap>
                       ElevatedButton(
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.white,
-                          foregroundColor: needsCheck ? Colors.black : Colors
-                              .grey,
+                          foregroundColor: needsCheck
+                              ? Colors.black
+                              : Colors.grey,
                           elevation: 0,
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 10),
-                          side: BorderSide(
-                              color: Colors.black,
-                              width: 1.5),
+                            horizontal: 16,
+                            vertical: 10,
+                          ),
+                          side: BorderSide(color: Colors.black, width: 1.5),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10),
                           ),
@@ -925,8 +926,8 @@ class RepairmanmapState extends State<Repairmanmap>
                           );
 
                           if (scannedCode != null && mounted) {
-                            final authController = context.read<
-                                AuthController>();
+                            final authController = context
+                                .read<AuthController>();
                             final token = authController.token;
                             if (token != null) {
                               final matchedVehicle = await context
@@ -934,52 +935,54 @@ class RepairmanmapState extends State<Repairmanmap>
                                   .scanVehicle(scannedCode, token);
 
                               if (matchedVehicle != null && mounted) {
+                                dynamic fullVehicle;
+                                try {
+                                  fullVehicle = vehicleController.vehicles
+                                      .firstWhere(
+                                        (v) => v.id == matchedVehicle.id,
+                                      );
+                                } catch (_) {
+                                  fullVehicle = matchedVehicle;
+                                }
 
-                                  dynamic fullVehicle;
-                                  try {
-                                    fullVehicle = vehicleController.vehicles
-                                        .firstWhere((v) =>
-                                    v.id == matchedVehicle.id);
-                                  } catch (_) {
-                                    fullVehicle = matchedVehicle;
-                                  }
+                                await vehicleController.inRemont(
+                                  fullVehicle.id,
+                                  token,
+                                );
 
-                                  await vehicleController.inRemont(
-                                      fullVehicle.id, token);
+                                final vehicleTypeId = fullVehicle.vehicleTypeId;
+                                if (vehicleTypeId != null) {
+                                  await context
+                                      .read<ZoneController>()
+                                      .fetchZones(vehicleTypeId, token);
+                                }
 
-                                  final vehicleTypeId = fullVehicle
-                                      .vehicleTypeId;
-                                  if (vehicleTypeId != null) {
-                                    await context
-                                        .read<ZoneController>()
-                                        .fetchZones(vehicleTypeId, token);
-                                  }
-
-                                  if (mounted) {
-                                    setState(() {
-                                      _selectedVehicle = null;
-                                      _startedRepair = fullVehicle;
-                                    });
-                                  }
-                                  else {
+                                if (mounted) {
+                                  setState(() {
+                                    _selectedVehicle = null;
+                                    _startedRepair = fullVehicle;
+                                  });
+                                } else {
                                   showTopNotification(
                                     context,
-                                    "This vehicle does not need a check (Status: ${matchedVehicle
-                                        .status})",
+                                    "This vehicle does not need a check (Status: ${matchedVehicle.status})",
                                   );
                                 }
                               } else if (mounted) {
-                                showTopNotification(context,
-                                    "Transport not found or deleted!");
+                                showTopNotification(
+                                  context,
+                                  "Transport not found or deleted!",
+                                );
                               }
                             }
                           }
                         },
-                        child:
-
-                        Text(needsCheck ? "Start the repair" : "Change status",
+                        child: Text(
+                          needsCheck ? "Start the repair" : "Change status",
                           style: TextStyle(
-                              fontWeight: FontWeight.w800, fontSize: 14),
+                            fontWeight: FontWeight.w800,
+                            fontSize: 14,
+                          ),
                         ),
                       ),
                       ElevatedButton(
@@ -988,9 +991,13 @@ class RepairmanmapState extends State<Repairmanmap>
                           foregroundColor: Colors.black,
                           elevation: 0,
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 10),
+                            horizontal: 16,
+                            vertical: 10,
+                          ),
                           side: const BorderSide(
-                              color: Colors.black, width: 1.5),
+                            color: Colors.black,
+                            width: 1.5,
+                          ),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10),
                           ),
@@ -1002,14 +1009,13 @@ class RepairmanmapState extends State<Repairmanmap>
                           final result = await Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) =>
-                                  Contactsupport(
-                                    vehicleId: vehicle.id,
-                                    email: Provider
-                                        .of<UserController>(
-                                        context, listen: false)
-                                        .userEmail,
-                                  ),
+                              builder: (context) => Contactsupport(
+                                vehicleId: vehicle.id,
+                                email: Provider.of<UserController>(
+                                  context,
+                                  listen: false,
+                                ).userEmail,
+                              ),
                             ),
                           );
                           if (result != null && mounted) {
@@ -1019,7 +1025,9 @@ class RepairmanmapState extends State<Repairmanmap>
                         child: const Text(
                           "Report problem",
                           style: TextStyle(
-                              fontWeight: FontWeight.w800, fontSize: 14),
+                            fontWeight: FontWeight.w800,
+                            fontSize: 14,
+                          ),
                         ),
                       ),
                     ],
@@ -1044,24 +1052,31 @@ class Pointer extends CustomPainter {
     final centerY = size.height / 2;
     final radius = size.width / 2;
     final Paint paint = Paint()
-      ..shader = RadialGradient(colors: [
-        Colors.blueAccent.withOpacity(0.6),
-        Colors.blueAccent.withOpacity(0.0)
-      ], stops: const [
-        0.3,
-        1.0
-      ]).createShader(
-          Rect.fromCircle(center: Offset(centerX, centerY), radius: radius));
+      ..shader =
+          RadialGradient(
+            colors: [
+              Colors.blueAccent.withOpacity(0.6),
+              Colors.blueAccent.withOpacity(0.0),
+            ],
+            stops: const [0.3, 1.0],
+          ).createShader(
+            Rect.fromCircle(center: Offset(centerX, centerY), radius: radius),
+          );
     const double angleWidth = 25.0 * (math.pi / 180);
     final Path path = Path()
       ..moveTo(centerX, centerY)
-      ..lineTo(centerX + radius * math.sin(angleWidth),
-          centerY - radius * math.cos(angleWidth))
+      ..lineTo(
+        centerX + radius * math.sin(angleWidth),
+        centerY - radius * math.cos(angleWidth),
+      )
       ..arcToPoint(
-          Offset(centerX - radius * math.sin(angleWidth),
-              centerY - radius * math.cos(angleWidth)),
-          radius: Radius.circular(radius),
-          clockwise: false)
+        Offset(
+          centerX - radius * math.sin(angleWidth),
+          centerY - radius * math.cos(angleWidth),
+        ),
+        radius: Radius.circular(radius),
+        clockwise: false,
+      )
       ..close();
     canvas.drawPath(path, paint);
   }
