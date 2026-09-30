@@ -38,7 +38,7 @@ class RepairmanmapState extends State<Repairmanmap>
   LatLng targetLocation = const LatLng(51.23547305664311, 22.548898519702192);
   double userHeading = 0.0;
   double targetHeading = 0.0;
-  bool Fallow = true;
+  bool fallow = true;
   bool _isFilterOpen = false;
   Set<String> _visibleTypes = {};
   bool _isInitialized = false;
@@ -145,7 +145,7 @@ class RepairmanmapState extends State<Repairmanmap>
         userLocation.longitude + lngDiff * lerpFactor,
       );
 
-      if (Fallow) {
+      if (fallow) {
         _mapController.move(userLocation, _mapController.camera.zoom);
       }
       if (mounted) setState(() {});
@@ -164,7 +164,7 @@ class RepairmanmapState extends State<Repairmanmap>
   void _startResumeTimer() {
     _resumeTimer?.cancel();
     _resumeTimer = Timer(const Duration(seconds: 5), () {
-      if (mounted) setState(() => Fallow = true);
+      if (mounted) setState(() => fallow = true);
     });
   }
 
@@ -184,7 +184,9 @@ class RepairmanmapState extends State<Repairmanmap>
     if (permission == LocationPermission.deniedForever) return;
 
     Position position = await Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.bestForNavigation,
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.bestForNavigation,
+      ),
     );
     if (!mounted) return;
 
@@ -242,11 +244,14 @@ class RepairmanmapState extends State<Repairmanmap>
     if (!mounted) return;
 
     if (index == 0) {
+      final token = context
+          .read<AuthController>()
+          .token;
+      if (token == null) return;
       final selectedVehicleFromCall = await Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) =>
-              AdminCallsPage(token: context.read<AuthController>().token!),
+          builder: (_) => AdminCallsPage(token: token),
         ),
       );
 
@@ -266,7 +271,7 @@ class RepairmanmapState extends State<Repairmanmap>
         setState(() {
           _selectedVehicle = latestVehicle;
           _startedRepair = null;
-          Fallow = false;
+          fallow = false;
         });
 
         _mapController.move(latestVehicle.position, 18.0);
@@ -293,7 +298,7 @@ class RepairmanmapState extends State<Repairmanmap>
         setState(() {
           _selectedVehicle = latestVehicle;
           _startedRepair = null;
-          Fallow = false; // Зупиняємо автостеження за користувачем
+          fallow = false; // Зупиняємо автостеження за користувачем
         });
         _mapController.move(latestVehicle.position, 18.0);
       }
@@ -354,7 +359,7 @@ class RepairmanmapState extends State<Repairmanmap>
               },
               onMapEvent: (event) {
                 if (event.source == MapEventSource.onDrag) {
-                  setState(() => Fallow = false);
+                  setState(() => fallow = false);
                   _startResumeTimer();
                 }
               },
@@ -369,7 +374,7 @@ class RepairmanmapState extends State<Repairmanmap>
                 builder: (context, zoneCtrl, child) {
                   return PolygonLayer(
                     polygons: zoneCtrl.zones.map((zone) {
-                      final color = Colors.red.withOpacity(0.3);
+                      final color = Colors.red.withValues(alpha: 0.3);
                       final borderColor = Colors.red;
 
                       return Polygon(
@@ -377,7 +382,6 @@ class RepairmanmapState extends State<Repairmanmap>
                         color: color,
                         borderColor: borderColor,
                         borderStrokeWidth: 2.0,
-                        isFilled: true,
                       );
                     }).toList(),
                   );
@@ -556,7 +560,7 @@ class RepairmanmapState extends State<Repairmanmap>
           backgroundColor: Colors.black,
           onPressed: () {
             setState(() {
-              Fallow = true;
+              fallow = true;
               targetLocation = userLocation;
             });
             _mapController.move(userLocation, _mapController.camera.zoom);
@@ -619,7 +623,7 @@ class RepairmanmapState extends State<Repairmanmap>
             width: 22 * _pulseAnimation.value,
             height: 22 * _pulseAnimation.value,
             decoration: BoxDecoration(
-              color: Colors.blueAccent.withOpacity(0.2),
+              color: Colors.blueAccent.withValues(alpha: 0.2),
               shape: BoxShape.circle,
             ),
           ),
@@ -708,7 +712,9 @@ class RepairmanmapState extends State<Repairmanmap>
                           ),
                           const SizedBox(height: 6),
                           Text(
-                            "Battery life ${(batteryLevel * 0.21).toStringAsFixed(0)} KM",
+                            "Battery life ${(vehicle is VehicleModel
+                                ? vehicleController.calculateRange(vehicle)
+                                : batteryLevel * 0.21).toStringAsFixed(0)} KM",
                             style: const TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w800,
@@ -858,7 +864,10 @@ class RepairmanmapState extends State<Repairmanmap>
                           if (needsCheck) ...[
                             const SizedBox(height: 6),
                             Text(
-                              "Battery life ${(batteryLevel * 0.21).toStringAsFixed(0)} KM",
+                              "Battery life ${(vehicle is VehicleModel
+                                  ? vehicleController.calculateRange(vehicle)
+                                  : batteryLevel * 0.21).toStringAsFixed(
+                                  0)} KM",
                               style: const TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w800,
@@ -956,6 +965,7 @@ class RepairmanmapState extends State<Repairmanmap>
                                       .read<ZoneController>()
                                       .fetchZones(vehicleTypeId, token);
                                 }
+                                if (!mounted) return;
 
                                 if (mounted) {
                                   setState(() {
@@ -1055,8 +1065,8 @@ class Pointer extends CustomPainter {
       ..shader =
           RadialGradient(
             colors: [
-              Colors.blueAccent.withOpacity(0.6),
-              Colors.blueAccent.withOpacity(0.0),
+              Colors.blueAccent.withValues(alpha: 0.6),
+              Colors.blueAccent.withValues(alpha: 0.0),
             ],
             stops: const [0.3, 1.0],
           ).createShader(

@@ -104,7 +104,7 @@ class _ProfileState extends State<Profile> {
                     borderRadius: BorderRadius.circular(12),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.2),
+                        color: Colors.black.withValues(alpha: 0.2),
                         blurRadius: 8,
                         offset: const Offset(0, 4),
                       ),
@@ -441,7 +441,6 @@ class _ProfileState extends State<Profile> {
                     );
 
                     if (result != null && result is String && mounted) {
-                      bool isSuccess = result.toLowerCase().contains("success");
                       WidgetsBinding.instance.addPostFrameCallback((_) {
                         _showTopNotification(context, result);
                       });
@@ -496,8 +495,6 @@ class _ProfileState extends State<Profile> {
                         );
 
                         if (result != null && result is String && mounted) {
-                          bool isSuccess = result.toLowerCase().contains(
-                              "success");
                           WidgetsBinding.instance.addPostFrameCallback((_) {
                             _showTopNotification(context, result);
                           });

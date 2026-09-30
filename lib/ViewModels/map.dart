@@ -29,7 +29,7 @@ import 'ScannerQr.dart';
 class MapPage extends StatefulWidget {
   const MapPage({super.key});
   @override
-  _MapPageState createState() => _MapPageState();
+  State<MapPage> createState() => _MapPageState();
 }
 
 class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
@@ -38,7 +38,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   LatLng targetLocation = const LatLng(51.23547305664311, 22.548898519702192);
   double userHeading = 0.0;
   double targetHeading = 0.0;
-  bool Fallow = true;
+  bool fallow = true;
   bool _isFilterOpen = false;
   Set<String> _visibleTypes = {};
   bool _isInitialized = false;
@@ -166,8 +166,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         userLocation.longitude + lngDiff * lerpFactor,
       );
 
-      // Плавний рух камери за користувачем під час руху, якщо увімкнено Fallow
-      if (Fallow) {
+      // Плавний рух камери за користувачем під час руху, якщо увімкнено fallow
+      if (fallow) {
         _mapController.move(userLocation, _mapController.camera.zoom);
       }
       if (mounted) setState(() {});
@@ -186,7 +186,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   void _startResumeTimer() {
     _resumeTimer?.cancel();
     _resumeTimer = Timer(const Duration(seconds: 5), () {
-      if (mounted) setState(() => Fallow = true);
+      if (mounted) setState(() => fallow = true);
     });
   }
 
@@ -207,7 +207,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
 
     // Отримуємо первинну позицію і робимо різкий телепорт на старті
     Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.bestForNavigation);
+        locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.bestForNavigation));
     if (!mounted) return;
 
     final initialLatLng = LatLng(position.latitude, position.longitude);
@@ -289,6 +290,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                 matchedVehicle.vehicleTypeId, token);
             await context.read<RentalController>().fetchRentalPlans(
                 matchedVehicle.vehicleTypeId);
+            if (!mounted) return;
 
             context.read<RentalController>().clearselectedPlan();
             setState(() {
@@ -360,7 +362,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
               },
               onMapEvent: (event) {
                 if (event.source == MapEventSource.onDrag) {
-                  setState(() => Fallow = false);
+                  setState(() => fallow = false);
                   _startResumeTimer();
                 }
               },
@@ -374,7 +376,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                 builder: (context, zoneCtrl, child) {
                   return PolygonLayer(
                     polygons: zoneCtrl.zones.map((zone) {
-                      final color = Colors.red.withOpacity(0.3);
+                      final color = Colors.red.withValues(alpha: 0.3);
                       final borderColor = Colors.red;
 
                       return Polygon(
@@ -382,7 +384,6 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                         color: color,
                         borderColor: borderColor,
                         borderStrokeWidth: 2.0,
-                        isFilled: true,
                       );
                     }).toList(),
                   );
@@ -556,7 +557,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
           backgroundColor: Colors.black,
           onPressed: () {
             setState(() {
-              Fallow = true;
+              fallow = true;
               targetLocation = userLocation;
             });
             // Примусовий миттєвий телепорт при натисканні на кнопку геолокації
@@ -619,7 +620,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                   width: 22 * _pulseAnimation.value,
                   height: 22 * _pulseAnimation.value,
                   decoration: BoxDecoration(
-                      color: Colors.blueAccent.withOpacity(0.2),
+                      color: Colors.blueAccent.withValues(alpha: 0.2),
                       shape: BoxShape.circle))),
       Container(
           width: 18,
@@ -1317,8 +1318,8 @@ class Pointer extends CustomPainter {
     final radius = size.width / 2;
     final Paint paint = Paint()
       ..shader = RadialGradient(colors: [
-        Colors.blueAccent.withOpacity(0.6),
-        Colors.blueAccent.withOpacity(0.0)
+        Colors.blueAccent.withValues(alpha: 0.6),
+        Colors.blueAccent.withValues(alpha: 0.0)
       ], stops: const [
         0.3,
         1.0
