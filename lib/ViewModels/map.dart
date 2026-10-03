@@ -135,8 +135,6 @@ class _MapPageState extends State<MapPage>
       final userId = authController.userId;
       final token = authController.token;
 
-      // Тут БАН НЕ ПЕРЕВІРЯЄМО.
-      // RoleRouter перевіряє його перед відкриттям MapPage.
 
       await vehicleController.fetchVehicles();
 
@@ -186,10 +184,6 @@ class _MapPageState extends State<MapPage>
     );
   }
 
-  // ============================================================
-  // FILTERS
-  // ============================================================
-
   void _ensureFiltersInitialized(List<dynamic> vehicles,) {
     if (!_isInitialized && vehicles.isNotEmpty) {
       setState(() {
@@ -220,9 +214,6 @@ class _MapPageState extends State<MapPage>
     return "$minutes:$seconds";
   }
 
-  // ============================================================
-  // SMOOTH MOVEMENT
-  // ============================================================
 
   void _updateSmoothElements() {
     const double lerpFactor = 0.1;
@@ -367,7 +358,6 @@ class _MapPageState extends State<MapPage>
                 newLatLng.longitude,
               );
 
-              // Ігноруємо GPS коливання менше 0.5 метра.
               if (distanceInMeters < 0.5) {
                 return;
               }
@@ -382,10 +372,6 @@ class _MapPageState extends State<MapPage>
         );
   }
 
-  // ============================================================
-  // COMPASS
-  // ============================================================
-
   void _initCompass() {
     _compassStream =
         FlutterCompass.events?.listen(
@@ -396,23 +382,13 @@ class _MapPageState extends State<MapPage>
           },
         );
   }
-
-  // ============================================================
-  // BOTTOM NAVIGATION
-  // ============================================================
-
   Future<void> _onItemTapped(int index,
       BuildContext context,) async {
-    // Тут одна перевірка бану для всіх пунктів меню.
     if (await _checkBan()) {
       return;
     }
 
     if (!mounted) return;
-
-    // ----------------------------------------------------------
-    // CHALLENGES
-    // ----------------------------------------------------------
 
     if (index == 0) {
       Navigator.push(
@@ -424,10 +400,6 @@ class _MapPageState extends State<MapPage>
       );
     }
 
-    // ----------------------------------------------------------
-    // HISTORY
-    // ----------------------------------------------------------
-
     if (index == 1) {
       Navigator.push(
         context,
@@ -437,10 +409,6 @@ class _MapPageState extends State<MapPage>
         ),
       );
     }
-
-    // ----------------------------------------------------------
-    // SCAN
-    // ----------------------------------------------------------
 
     if (index == 2) {
       final scannedCode =
@@ -502,9 +470,6 @@ class _MapPageState extends State<MapPage>
       }
     }
 
-    // ----------------------------------------------------------
-    // ACCOUNT
-    // ----------------------------------------------------------
 
     if (index == 3) {
       Navigator.push(
@@ -517,9 +482,6 @@ class _MapPageState extends State<MapPage>
     }
   }
 
-  // ============================================================
-  // DISPOSE
-  // ============================================================
 
   @override
   void dispose() {
@@ -534,9 +496,6 @@ class _MapPageState extends State<MapPage>
     super.dispose();
   }
 
-  // ============================================================
-  // BUILD
-  // ============================================================
 
   @override
   Widget build(BuildContext context) {
@@ -576,9 +535,6 @@ class _MapPageState extends State<MapPage>
     return Scaffold(
       body: Stack(
         children: [
-          // ======================================================
-          // MAP
-          // ======================================================
 
           FlutterMap(
             mapController: _mapController,
@@ -614,9 +570,6 @@ class _MapPageState extends State<MapPage>
             ),
 
             children: [
-              // ==================================================
-              // MAPBOX
-              // ==================================================
 
               TileLayer(
                 urlTemplate:
@@ -626,9 +579,6 @@ class _MapPageState extends State<MapPage>
                 },
               ),
 
-              // ==================================================
-              // ZONES
-              // ==================================================
 
               Consumer<ZoneController>(
                 builder:
@@ -661,9 +611,6 @@ class _MapPageState extends State<MapPage>
                 },
               ),
 
-              // ==================================================
-              // VEHICLES
-              // ==================================================
 
               MarkerLayer(
                 markers: vehicles
@@ -684,8 +631,6 @@ class _MapPageState extends State<MapPage>
                           HitTestBehavior.opaque,
 
                           onTap: () async {
-                            // Перевірка бану перед
-                            // вибором транспорту.
                             if (await _checkBan()) {
                               return;
                             }
@@ -736,10 +681,6 @@ class _MapPageState extends State<MapPage>
                     .toList(),
               ),
 
-              // ==================================================
-              // USER LOCATION
-              // ==================================================
-
               MarkerLayer(
                 markers: [
                   Marker(
@@ -756,9 +697,6 @@ class _MapPageState extends State<MapPage>
             ],
           ),
 
-          // ======================================================
-          // FILTER
-          // ======================================================
 
           Positioned(
             top: 50,
@@ -928,9 +866,6 @@ class _MapPageState extends State<MapPage>
             ),
           ),
 
-          // ======================================================
-          // SELECTED VEHICLE
-          // ======================================================
 
           if (_selectedVehicle != null)
             Positioned(
@@ -944,9 +879,6 @@ class _MapPageState extends State<MapPage>
               ),
             ),
 
-          // ======================================================
-          // START RENTAL
-          // ======================================================
 
           if (_startedRental != null)
             Positioned(
@@ -1034,9 +966,6 @@ class _MapPageState extends State<MapPage>
 
             unselectedFontSize: 14,
 
-            // Перевірка знаходиться всередині
-            // _onItemTapped, тому тут повторно
-            // її НЕ робимо.
             onTap: (index) =>
                 _onItemTapped(
                   index,
@@ -1094,10 +1023,6 @@ class _MapPageState extends State<MapPage>
     );
   }
 
-  // ============================================================
-  // USER POINTER
-  // ============================================================
-
   Widget _buildUserPointer() {
     return Stack(
       alignment: Alignment.center,
@@ -1144,11 +1069,6 @@ class _MapPageState extends State<MapPage>
       ],
     );
   }
-
-  // ============================================================
-  // VEHICLE ICON
-  // ============================================================
-
   String getIconForVehicleType(String type,) {
     switch (type.toLowerCase().trim()) {
       case 'electric scooter':
@@ -1164,10 +1084,6 @@ class _MapPageState extends State<MapPage>
         return 'lib/assets/imgs/scooter.png';
     }
   }
-
-  // ============================================================
-  // ACTIVE RENTAL WIDGET
-  // ============================================================
 
   Widget _buildVehicleRentActiveWidget(BuildContext context,
       dynamic vehicle,) {
@@ -1251,8 +1167,7 @@ class _MapPageState extends State<MapPage>
 
                             onPressed:
                                 () async {
-                              // SUPPORT перевіряє бан.
-                              if (await _checkBan()) {
+                                  if (await _checkBan()) {
                                 return;
                               }
 
@@ -1424,13 +1339,6 @@ class _MapPageState extends State<MapPage>
                         ),
                         elevation: 0,
                       ),
-
-                      // ==================================================
-                      // END THE TRIP
-                      //
-                      // БАН ТУТ НЕ ПЕРЕВІРЯЄМО.
-                      // ==================================================
-
                       onPressed: () async {
                         final authController =
                         context.read<
@@ -1571,9 +1479,6 @@ class _MapPageState extends State<MapPage>
     );
   }
 
-  // ============================================================
-  // VEHICLE DETAILS
-  // ============================================================
 
   Widget _buildVehicleDetailsWidget(BuildContext context,
       dynamic vehicle,) {
@@ -1666,8 +1571,7 @@ class _MapPageState extends State<MapPage>
 
                                 onPressed:
                                     () async {
-                                  // SUPPORT перевіряє бан.
-                                  if (await _checkBan()) {
+                                      if (await _checkBan()) {
                                     return;
                                   }
 
@@ -1819,8 +1723,7 @@ class _MapPageState extends State<MapPage>
                             return GestureDetector(
                               onTap:
                                   () async {
-                                // Вибір тарифу перевіряє бан.
-                                if (await _checkBan()) {
+                                    if (await _checkBan()) {
                                   return;
                                 }
 
@@ -1947,9 +1850,6 @@ class _MapPageState extends State<MapPage>
     );
   }
 
-  // ============================================================
-  // START RENTAL
-  // ============================================================
 
   Widget _buildStartRentalWidget(BuildContext context,
       dynamic vehicle,) {
@@ -2042,8 +1942,7 @@ class _MapPageState extends State<MapPage>
 
                                 onPressed:
                                     () async {
-                                  // SUPPORT перевіряє бан.
-                                  if (await _checkBan()) {
+                                      if (await _checkBan()) {
                                     return;
                                   }
 
@@ -2163,8 +2062,7 @@ class _MapPageState extends State<MapPage>
                             return GestureDetector(
                               onTap:
                                   () async {
-                                // Вибір тарифу перевіряє бан.
-                                if (await _checkBan()) {
+                                    if (await _checkBan()) {
                                   return;
                                 }
 
@@ -2345,8 +2243,7 @@ class _MapPageState extends State<MapPage>
 
                               onPressed:
                                   () async {
-                                // START RENTAL перевіряє бан.
-                                if (await _checkBan()) {
+                                    if (await _checkBan()) {
                                   return;
                                 }
 
@@ -2456,9 +2353,6 @@ class _MapPageState extends State<MapPage>
   }
 }
 
-// ================================================================
-// POINTER
-// ================================================================
 
 class Pointer extends CustomPainter {
   @override
