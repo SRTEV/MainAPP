@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
-
 class UserResultModel {
   final int id;
   final int userId;
@@ -13,8 +12,8 @@ class UserResultModel {
   final int rewardAmount;
   final String rewardName;
   final String rewardUnit;
-  final String challengeTypeName; // Додано
-  final String vehicleTypeName; // Додано
+  final String challengeTypeName;
+  final String vehicleTypeName;
   final String? startDate;
   final String? endDate;
   final int? paymentId;
@@ -199,11 +198,11 @@ class Challangecontroller extends ChangeNotifier {
 
       } else {
         allUserResults = [];
-        print("Failed to load user results: ${response.statusCode}");
+        debugPrint("Failed to load user results: ${response.statusCode}");
       }
     } catch (e) {
       allUserResults = [];
-      print("Error fetching user results: $e");
+      debugPrint("Error fetching user results: $e");
     } finally {
       isLoading = false;
       notifyListeners();

@@ -122,7 +122,7 @@ class _ProfileState extends State<Profile> {
                 ),
               ),
             ),
-      ),
+          ),
     );
 
     overlayState.insert(overlayEntry);

@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:mainapp/Controllers/AuthController.dart';
 import 'package:mainapp/Controllers/UserController.dart';
 import 'package:provider/provider.dart';
+
 import '../ViewModels/Login.dart';
 
 class RepairmanProfile extends StatefulWidget {
@@ -76,20 +77,20 @@ class _RepairmanProfileState extends State<RepairmanProfile> {
                       widget.hasActiveRepair ? Colors.grey : Colors.black,
                       widget.hasActiveRepair
                           ? () {
-                              // Виводимо сповіщення, якщо кнопка заблокована
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                    "Cannot switch mode while repair is active!",
-                                  ),
-                                  duration: Duration(seconds: 2),
-                                ),
-                              );
-                            }
+                        // Виводимо сповіщення, якщо кнопка заблокована
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              "Cannot switch mode while repair is active!",
+                            ),
+                            duration: Duration(seconds: 2),
+                          ),
+                        );
+                      }
                           : () {
-                              authCtrl.toggleRepairmanMode();
-                              Navigator.pop(context);
-                            },
+                        authCtrl.toggleRepairmanMode();
+                        Navigator.pop(context);
+                      },
                       width: 300,
                       height: 48,
                       fontSize: 25,
