@@ -42,6 +42,7 @@ dependencies:
   flutter_stripe: any
   geocoding: any
   cupertino_icons: any
+  shared_preferences: any
 
 dev_dependencies:
   flutter_test:

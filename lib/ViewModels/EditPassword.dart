@@ -29,13 +29,13 @@ class EditpasswordState extends State<Editpassword> {
     super.dispose();
   }
 
-  // Метод для показу модального вікна підтвердження
+
   void _showConfirmationDialog(BuildContext context) {
     _hideKeyboard();
     final viewModel = context.read<AuthController>();
     viewModel.clearMessage();
 
-    // Проста валідація перед відкриттям модалки
+
     if (_passwordController.text.isEmpty ||
         _confirmPasswordController.text.isEmpty) {
       viewModel.setMessage("Please enter all fields", isError: true);

@@ -37,11 +37,9 @@ class _MapPageState extends State<MapPage>
     with TickerProviderStateMixin {
   final String mapboxToken = dotenv.env['TOKEN_MAP']!;
 
-  LatLng userLocation =
-  const LatLng(51.23547305664311, 22.548898519702192);
+  LatLng userLocation = const LatLng(51.23547305664311, 22.548898519702192);
 
-  LatLng targetLocation =
-  const LatLng(51.23547305664311, 22.548898519702192);
+  LatLng targetLocation = const LatLng(51.23547305664311, 22.548898519702192);
 
   double userHeading = 0.0;
   double targetHeading = 0.0;
@@ -535,7 +533,6 @@ class _MapPageState extends State<MapPage>
     return Scaffold(
       body: Stack(
         children: [
-
           FlutterMap(
             mapController: _mapController,
             options: MapOptions(
@@ -552,25 +549,20 @@ class _MapPageState extends State<MapPage>
                   _startedRental = null;
                 });
 
-                context
-                    .read<ZoneController>()
-                    .clearZones();
+                context.read<ZoneController>().clearZones();
               },
 
               onMapEvent: (event) {
-                if (event.source ==
-                    MapEventSource.onDrag) {
+                if (event.source == MapEventSource.onDrag) {
                   setState(() {
                     fallow = false;
                   });
-
                   _startResumeTimer();
                 }
               },
             ),
 
             children: [
-
               TileLayer(
                 urlTemplate:
                 'https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/{z}/{x}/{y}?access_token={accessToken}',

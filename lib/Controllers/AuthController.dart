@@ -5,7 +5,6 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'package:mainapp/Router.dart';
 
-
 class AuthController extends ChangeNotifier {
   String message = '';
   String? token;
@@ -30,14 +29,13 @@ class AuthController extends ChangeNotifier {
     }
   }
 
-
   void setMessage(String msg, {bool isError = false}) {
     message = msg;
     notifyListeners();
   }
 
   void clearMessage() {
-    message ='';
+    message = '';
     emailBorderColor = Colors.black;
     passwordBorderColor = Colors.black;
     nameBorderColor = Colors.black;
@@ -54,6 +52,22 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
   }
 
+
+  String? _validatePasswords(String newPassword, String confirmPassword) {
+    if (newPassword.isEmpty || confirmPassword.isEmpty) {
+      passwordBorderColor = Colors.red;
+      return "Please enter all fields";
+    }
+    if (newPassword.length < 8) {
+      passwordBorderColor = Colors.red;
+      return "Password must be at least 8 characters";
+    }
+    if (newPassword != confirmPassword) {
+      passwordBorderColor = Colors.red;
+      return "Passwords do not match";
+    }
+    return null;
+  }
   Future<void> register(BuildContext context, String name, String email, String password, String confirmPassword) async {
     clearMessage();
     if (name.isEmpty && email.isEmpty && password.isEmpty && confirmPassword.isEmpty) {
@@ -64,7 +78,6 @@ class AuthController extends ChangeNotifier {
       setMessage("Please enter all fields", isError: true);
       return;
     }
-
     if (name.isEmpty) {
       nameBorderColor = Colors.red;
       setMessage("Please enter your name", isError: true);
@@ -80,21 +93,15 @@ class AuthController extends ChangeNotifier {
       setMessage("Please enter your password", isError: true);
       return;
     }
-
     if (!RegExp(emailRegex).hasMatch(email)) {
       emailBorderColor = Colors.red;
       setMessage("Invalid email format", isError: true);
       return;
     }
 
-    if (password.length < 8) {
-      passwordBorderColor = Colors.red;
-      setMessage("Password must be at least 8 characters long", isError: true);
-      return;
-    }
-
-    if (password != confirmPassword) {
-      setMessage("Passwords do not match", isError: true);
+    final validationError = _validatePasswords(password, confirmPassword);
+    if (validationError != null) {
+      setMessage(validationError, isError: true);
       return;
     }
 
@@ -104,22 +111,20 @@ class AuthController extends ChangeNotifier {
         headers: {"Content-Type": "application/json"},
         body: json.encode({'Name': name, 'Email': email, 'Password': password}),
       );
-
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = json.decode(response.body);
         token = data['token'];
         userId = data['id'];
-        userRole =
-            data['role'] ?? 'User'; // Зберігаємо роль, яку повернув бекенд
+        userRole = data['role'] ?? 'User';
         RMode = false;
-
-        // Перенаправлення через MainRouter, який обробить права та інтерфейс
         Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (context) => const RoleRouter())
         );
       } else {
-        setMessage(json.decode(response.body)['message'] ?? "Registration failed", isError: true);
+        setMessage(
+            json.decode(response.body)['message'] ?? "Registration failed",
+            isError: true);
       }
     } catch (e) {
       setMessage("Connection failed", isError: true);
@@ -128,18 +133,19 @@ class AuthController extends ChangeNotifier {
 
   Future<void> login(BuildContext context, String email, String password) async {
     clearMessage();
-    if(email.isEmpty && password.isEmpty) {
+
+    if (email.isEmpty && password.isEmpty) {
       emailBorderColor = Colors.red;
       passwordBorderColor = Colors.red;
       setMessage("Please enter all fields", isError: true);
       return;
     }
-    if(email.isEmpty){
+    if (email.isEmpty) {
       emailBorderColor = Colors.red;
       setMessage("Please enter your email", isError: true);
       return;
     }
-    if(password.isEmpty){
+    if (password.isEmpty) {
       passwordBorderColor = Colors.red;
       setMessage("Please enter your password", isError: true);
       return;
@@ -152,7 +158,7 @@ class AuthController extends ChangeNotifier {
 
     try {
       final response = await http.post(
-        Uri.parse('$serverApi/api/User/login/app'),
+        Uri.parse('$serverApi/api/User/login'),
         headers: {"Content-Type": "application/json"},
         body: json.encode({'Email': email, 'Password': password}),
       );
@@ -161,17 +167,17 @@ class AuthController extends ChangeNotifier {
         final data = json.decode(response.body);
         token = data['token'];
         userId = data['id'];
-        userRole = data['role'] ?? 'User'; // Зберігаємо отриману з бекенду роль
+        userRole = data['role']!;
         RMode = isRepairman;
-        debugPrint(
-            "Role: $userRole , RMode: $RMode"); // Скидаємо режим на клієнтський за замовчуванням
+        debugPrint("Role: $userRole , RMode: $RMode");
 
         Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (context) => const RoleRouter())
         );
       } else {
-        setMessage(json.decode(response.body)['message'] ?? "Login failed", isError: true);
+        setMessage(json.decode(response.body)['message'] ?? "Login failed",
+            isError: true);
       }
     } catch (e) {
       setMessage("Connection failed", isError: true);
@@ -206,7 +212,8 @@ class AuthController extends ChangeNotifier {
         setMessage("Reset link has been sent to your email");
       } else {
         final errorData = json.decode(response.body);
-        setMessage(errorData['message'] ?? "Failed to send reset email", isError: true);
+        setMessage(errorData['message'] ?? "Failed to send reset email",
+            isError: true);
       }
     } catch (e) {
       debugPrint("ResetPassword error: $e");
@@ -217,21 +224,9 @@ class AuthController extends ChangeNotifier {
   Future<void> changePassword(BuildContext context, String token, String newPassword, String confirmPassword) async {
     clearMessage();
 
-    if (newPassword.isEmpty || confirmPassword.isEmpty) {
-      passwordBorderColor = Colors.red;
-      setMessage("Please enter all fields", isError: true);
-      return;
-    }
-
-    if (newPassword.length < 8) {
-      passwordBorderColor = Colors.red;
-      setMessage("Password must be at least 8 characters", isError: true);
-      return;
-    }
-
-    if (newPassword != confirmPassword) {
-      passwordBorderColor = Colors.red;
-      setMessage("Passwords do not match", isError: true);
+    final validationError = _validatePasswords(newPassword, confirmPassword);
+    if (validationError != null) {
+      setMessage(validationError, isError: true);
       return;
     }
 
@@ -249,7 +244,8 @@ class AuthController extends ChangeNotifier {
         setMessage("Password changed successfully!");
       } else {
         final errorData = json.decode(response.body);
-        setMessage(errorData['message'] ?? "Error changing password", isError: true);
+        setMessage(
+            errorData['message'] ?? "Error changing password", isError: true);
       }
     } catch (e) {
       setMessage("Connection error", isError: true);
@@ -260,25 +256,10 @@ class AuthController extends ChangeNotifier {
       String confirmPassword) async {
     clearMessage();
 
-    if (newPassword.isEmpty || confirmPassword.isEmpty) {
-      passwordBorderColor = Colors.red;
-      const msg = "Please enter all fields";
-      setMessage(msg, isError: true);
-      return msg;
-    }
-
-    if (newPassword.length < 8) {
-      passwordBorderColor = Colors.red;
-      const msg = "Password must be at least 8 characters";
-      setMessage(msg, isError: true);
-      return msg;
-    }
-
-    if (newPassword != confirmPassword) {
-      passwordBorderColor = Colors.red;
-      const msg = "Passwords do not match";
-      setMessage(msg, isError: true);
-      return msg;
+    final validationError = _validatePasswords(newPassword, confirmPassword);
+    if (validationError != null) {
+      setMessage(validationError, isError: true);
+      return validationError;
     }
 
     if (token == null || userId == null) {
