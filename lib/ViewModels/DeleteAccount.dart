@@ -248,15 +248,15 @@ class _DeleteAccountState extends State<DeleteAccount> {
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(20),
         borderSide: BorderSide(
-          color: borderColor,
-          width: 1.5,
+          color: Colors.black,
+          width: 2,
         ),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(20),
         borderSide: BorderSide(
-          color: borderColor,
-          width: 1.5,
+          color: Colors.black,
+          width: 2,
         ),
       ),
       focusedBorder: OutlineInputBorder(
