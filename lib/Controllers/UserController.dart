@@ -63,19 +63,35 @@ class UserController extends ChangeNotifier {
     }
   }
 
+
   Future<void> deleteAccount(int id, String text, String token) async {
     final url = Uri.parse('$serverApi/api/User/Delete/$id');
 
     try {
-      await http.post(
+      final response = await http.post(
         url,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
-        body: json.encode({'Password': text}),
+        body: json.encode({
+          'password': text,
+        }),
       );
-    } catch (_) {}
+
+      if (response.statusCode == 200) {
+        print('Account deleted successfully');
+        return;
+      }
+
+      final data = json.decode(response.body);
+
+      throw Exception(
+        data['message'] ?? 'Failed to delete account',
+      );
+    } catch (e) {
+      rethrow;
+    }
   }
 
   Future<String?> giveMeHeplPlease(String text,

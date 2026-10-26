@@ -127,6 +127,7 @@ class _ChangePasswordResetState extends State<ChangePasswordReset> {
                             );
                           }
                         }
+                        debugPrint(widget.token);
                       },
                       child: const Text("Reset password", style: TextStyle(fontSize: 16)),
                     ),

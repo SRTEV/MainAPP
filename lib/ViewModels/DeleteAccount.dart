@@ -1,3 +1,4 @@
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mainapp/Controllers/UserController.dart';
@@ -14,16 +15,27 @@ class DeleteAccount extends StatefulWidget {
 }
 
 class _DeleteAccountState extends State<DeleteAccount> {
-  final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmController = TextEditingController();
+  final TextEditingController _passwordController =
+  TextEditingController();
+  final TextEditingController _confirmController =
+  TextEditingController();
+
+  bool _passwordError = false;
+  bool _confirmError = false;
 
   void _hideKeyboard() {
     FocusScope.of(context).requestFocus(FocusNode());
   }
 
   @override
+  void dispose() {
+    _passwordController.dispose();
+    _confirmController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // Використовуємо listen: true, щоб UI оновлювався при зміні кольорів/повідомлень
     final authController = context.watch<AuthController>();
     final userController = context.read<UserController>();
 
@@ -39,6 +51,7 @@ class _DeleteAccountState extends State<DeleteAccount> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SizedBox(height: 20),
+
                   Row(
                     children: [
                       IconButton(
@@ -47,40 +60,90 @@ class _DeleteAccountState extends State<DeleteAccount> {
                           size: 36,
                           color: Colors.black,
                         ),
-                        onPressed: () => Navigator.of(context).pop(),
+                        onPressed: () =>
+                            Navigator.of(context).pop(),
                       ),
                       const SizedBox(width: 10),
-                      Text("Delete account",
-                          style: GoogleFonts.inter(fontSize: 28, fontWeight: FontWeight.w700)),
+                      Text(
+                        "Delete account",
+                        style: GoogleFonts.inter(
+                          fontSize: 28,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                     ],
                   ),
+
                   const SizedBox(height: 60),
 
-                  Text("Write your password :", style: GoogleFonts.inter(fontWeight: FontWeight.w500)),
+                  Text(
+                    "Write your password :",
+                    style: GoogleFonts.inter(
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+
                   const SizedBox(height: 8),
+
                   TextField(
                     controller: _passwordController,
                     obscureText: true,
+                    onChanged: (value) {
+                      if (_passwordError && value.isNotEmpty) {
+                        setState(() {
+                          _passwordError = false;
+                        });
+                      }
+                    },
                     decoration: _inputDecoration(
-                      hint: "**********",
-                      borderColor: authController.passwordBorderColor,
+                      hint: "*********",
+                      borderColor: _passwordError
+                          ? Colors.red
+                          : Colors.grey.shade500,
                     ),
                   ),
+
                   const SizedBox(height: 30),
-                  Text("Write \"DELETE\" :", style: GoogleFonts.inter(fontWeight: FontWeight.w500)),
+
+                  Text(
+                    'Write "DELETE" :',
+                    style: GoogleFonts.inter(
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+
                   const SizedBox(height: 8),
+
                   TextField(
                     controller: _confirmController,
-                    decoration: _inputDecoration(hint: "DELETE", borderColor: authController.confirmBorderColor),
+                    onChanged: (value) {
+                      if (_confirmError && value == "DELETE") {
+                        setState(() {
+                          _confirmError = false;
+                        });
+                      }
+                    },
+                    decoration: _inputDecoration(
+                      hint: "DELETE",
+                      borderColor: _confirmError
+                          ? Colors.red
+                          : Colors.grey.shade500,
+                    ),
                   ),
 
                   const SizedBox(height: 10),
+
                   Text(
-                      authController.message,
-                      style: const TextStyle(color: Colors.red, fontSize: 15, fontWeight: FontWeight.w500)
+                    authController.message,
+                    style: const TextStyle(
+                      color: Colors.red,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
 
                   const SizedBox(height: 60),
+
                   SizedBox(
                     width: double.infinity,
                     height: 60,
@@ -88,41 +151,81 @@ class _DeleteAccountState extends State<DeleteAccount> {
                       onPressed: () async {
                         _hideKeyboard();
 
-                        if (_passwordController.text.isEmpty || _confirmController.text != "DELETE") {
-                          authController.setMessage("Please check your input", isError: true);
-                          setState(() {
-                            authController.passwordBorderColor = Colors.red;
-                            authController.confirmBorderColor = Colors.red;
-                          });
+                        final passwordInvalid =
+                            _passwordController.text.isEmpty;
+                        final confirmInvalid =
+                            _confirmController.text != "DELETE";
+
+                        setState(() {
+                          _passwordError = passwordInvalid;
+                          _confirmError = confirmInvalid;
+                        });
+
+                        if (passwordInvalid || confirmInvalid) {
+                          authController.setMessage(
+                            passwordInvalid && confirmInvalid
+                                ? "Please check your password and type DELETE"
+                                : passwordInvalid
+                                ? "Please enter your password"
+                                : 'Please type "DELETE" correctly',
+                            isError: true,
+                          );
                           return;
                         }
+
+                        authController.setMessage(
+                          "",
+                          isError: false,
+                        );
+
                         try {
-                          final auth = context.read<AuthController>();
+                          final auth =
+                          context.read<AuthController>();
 
                           await userController.deleteAccount(
-                              auth.userId!,
-                              _passwordController.text,
-                              auth.token!
+                            auth.userId!,
+                            _passwordController.text,
+                            auth.token!,
                           );
+
                           auth.clearSomeData();
 
                           if (context.mounted) {
                             Navigator.pushAndRemoveUntil(
                               context,
-                              MaterialPageRoute(builder: (context) => const Login()),
+                              MaterialPageRoute(
+                                builder: (context) => const Login(),
+                              ),
                                   (route) => false,
                             );
                           }
                         } catch (e) {
-                          authController.setMessage("Failed to delete. Check your password.", isError: true);
+                          if (!context.mounted) return;
+
+                          authController.setMessage(
+                            "Failed to delete. Check your password.",
+                            isError: true,
+                          );
+
+                          setState(() {
+                            _passwordError = true;
+                          });
                         }
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.black,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
                       ),
-                      child: const Text("Delete account",
-                          style: TextStyle(color: Colors.red, fontSize: 18, fontWeight: FontWeight.bold)),
+                      child: const Text(
+                        "Delete account",
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -134,14 +237,35 @@ class _DeleteAccountState extends State<DeleteAccount> {
     );
   }
 
-  InputDecoration _inputDecoration({String? hint, required Color borderColor}) {
+  InputDecoration _inputDecoration({
+    String? hint,
+    required Color borderColor,
+  }) {
     return InputDecoration(
       hintText: hint,
       filled: true,
       fillColor: Colors.grey[100],
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide.none),
-      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide(color: borderColor, width: 1.5)),
-      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide(color: borderColor, width: 2.0)),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(20),
+        borderSide: BorderSide(
+          color: borderColor,
+          width: 1.5,
+        ),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(20),
+        borderSide: BorderSide(
+          color: borderColor,
+          width: 1.5,
+        ),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(20),
+        borderSide: BorderSide(
+          color: borderColor,
+          width: 2.0,
+        ),
+      ),
     );
   }
 }

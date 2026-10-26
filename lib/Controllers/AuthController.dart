@@ -209,7 +209,9 @@ class AuthController extends ChangeNotifier {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         Email = data['email'];
-        setMessage("Reset link has been sent to your email");
+        setMessage(data['message'] ??
+            'If the email exists in  system, a password reset link will be sent to it.');
+
       } else {
         final errorData = json.decode(response.body);
         setMessage(errorData['message'] ?? "Failed to send reset email",
