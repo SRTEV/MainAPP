@@ -181,4 +181,14 @@ class RentalController extends ChangeNotifier {
     _selectedPlan = null;
     notifyListeners();
   }
+
+
+  String getPlanNameById(int planId) {
+    try {
+      final plan = _plans.firstWhere((p) => p.id == planId);
+      return plan.planName;
+    } catch (_) {
+      return "Tariff #$planId";
+    }
+  }
 }

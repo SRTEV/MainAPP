@@ -65,7 +65,7 @@ class UserController extends ChangeNotifier {
 
 
   Future<void> deleteAccount(int id, String text, String token) async {
-    final url = Uri.parse('$serverApi/api/User/Delete/$id');
+    final url = Uri.parse('$serverApi/api/User/App/Delete/$id');
 
     try {
       final response = await http.post(

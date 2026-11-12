@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:mainapp/Controllers/RentalController.dart';
 import 'package:provider/provider.dart';
 
 import '../Controllers/AuthController.dart';
@@ -185,30 +186,59 @@ class _CompetitionrewardspageState extends State<Competitionrewardspage> {
                                   ],
                                 ),
                                 const SizedBox(height: 16),
-                                Text(
-                                  "${result.score} m",
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 28,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                  ),
+                                Builder(
+                                  builder: (context) {
+                                    final name = result.rewardName
+                                        .toLowerCase();
+                                    String displayText = "${result
+                                        .score} m (Score)";
+
+                                    if (name.contains("free km")) {
+                                      displayText = "Free km";
+                                    } else if (name.contains("discount")) {
+                                      displayText = "Discount:";
+                                    } else if (name.contains("free ride")) {
+                                      displayText = "Free Ride";
+                                    }
+
+                                    return Text(
+                                      displayText,
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                    );
+                                  },
                                 ),
                                 const SizedBox(height: 16),
-                                Text(
-                                  "Prize: ${result.rewardName}",
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  "Value: ${result.rewardAmount}",
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 14,
-                                    color: Colors.white70,
-                                  ),
+                                Builder(
+                                  builder: (context) {
+                                    if (result.rewardName
+                                        .toLowerCase()
+                                        .contains('free ride')) {
+                                      final rentalController = context.read<
+                                          RentalController>();
+                                      final tariffName = rentalController
+                                          .getPlanNameById(
+                                          int.tryParse(result.rewardUnit)!);
+                                      return Text(
+                                        "Tariff: $tariffName",
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 14,
+                                          color: Colors.white70,
+                                        ),
+                                      );
+                                    } else {
+                                      return Text(
+                                        "Value: ${result.rewardAmount}",
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 14,
+                                          color: Colors.white70,
+                                        ),
+                                      );
+                                    }
+                                  },
                                 ),
                                 const Padding(
                                   padding: EdgeInsets.symmetric(vertical: 12.0),

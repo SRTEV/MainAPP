@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:mainapp/Controllers/RentalController.dart';
 import 'package:provider/provider.dart';
 
 import '../Controllers/AuthController.dart';
@@ -287,9 +288,15 @@ class ChallangesState extends State<Challanges> {
                   if (name.toLowerCase().contains('discount')) {
                     rewardText = "$positionText — $name: $unit%";
                   } else if (name.toLowerCase().contains('free ride')) {
-                    rewardText =
-                    "$positionText — $name: One Free Ride at tariff";
-                  } else {
+                          final rentalController = context
+                              .read<RentalController>();
+
+                          final String tariffName = rentalController
+                              .getPlanNameById(int.tryParse(unit.toString())!);
+
+                          rewardText =
+                              "$positionText — $name: One Free Ride at $tariffName tariff";
+                        } else {
                     rewardText = "$positionText — $name: $unit km";
                   }
 
