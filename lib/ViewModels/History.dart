@@ -29,67 +29,6 @@ class _HistoryState extends State<History> {
     );
   }
 
-  String _formatPrice(Map<String, dynamic> item) {
-    num amount = 0;
-
-    final payments = item['payments'] ?? item['Payments'];
-    final payment = item['payment'] ?? item['Payment'];
-
-    num read(Map p) =>
-        num.tryParse((p['amount'] ?? p['Amount'] ?? 0).toString()) ?? 0;
-    int idOf(Map p) => int.tryParse((p['id'] ?? p['Id'] ?? 0).toString()) ?? 0;
-
-    if (payments is List && payments.isNotEmpty) {
-      final list = payments.whereType<Map>().toList();
-      final ok = list.where((p) {
-        final s = (p['status'] ?? p['Status'] ?? '').toString();
-        return s.startsWith('Completed');
-      }).toList();
-      final source = ok.isNotEmpty ? ok : list;
-      source.sort((a, b) => idOf(a).compareTo(idOf(b)));
-      amount = read(source.last);
-    } else if (payment is Map) {
-      amount = read(payment);
-    } else {
-      amount =
-          num.tryParse(
-            (item['amount'] ?? item['Amount'] ?? item['price'] ?? 0).toString(),
-          ) ??
-          0;
-    }
-
-    return '${amount.toStringAsFixed(2).replaceAll('.', ',')} Zł';
-  }
-
-  String _formatDistance(dynamic raw) {
-    final meters = (num.tryParse(raw?.toString() ?? '') ?? 0).round();
-    final text = meters.toString().replaceAllMapped(
-      RegExp(r'\B(?=(\d{3})+(?!\d))'),
-      (m) => ' ',
-    );
-    return '$text m';
-  }
-
-  String _formatDate(dynamic raw) {
-    if (raw == null) return '';
-    final d = DateTime.tryParse(raw.toString())?.toLocal();
-    if (d == null) return '';
-    String two(int n) => n.toString().padLeft(2, '0');
-    return '${two(d.hour)}:${two(d.minute)} ${two(d.day)}.${two(d.month)}.${d.year}';
-  }
-
-  String _getIconForVehicleType(dynamic id) {
-    switch (id.toString().trim()) {
-      case '1':
-        return 'lib/assets/imgs/S.png';
-      case '2':
-        return 'lib/assets/imgs/Wheel.png';
-      case '3':
-        return 'lib/assets/imgs/Bicycle.png';
-      default:
-        return 'lib/assets/imgs/S.png';
-    }
-  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -129,10 +68,10 @@ class _HistoryState extends State<History> {
             Expanded(
               child: Container(
                 width: double.infinity,
-                margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                margin: const EdgeInsets.symmetric(horizontal: 16.0),
                 decoration: const BoxDecoration(
                   color: Color(0xFFE5E5E5),
-                  borderRadius: BorderRadius.all(Radius.circular(24)),
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
                 ),
                 child: FutureBuilder<List<dynamic>>(
                   future: _historyFuture,
@@ -176,19 +115,24 @@ class _HistoryState extends State<History> {
                       itemCount: historyItems.length,
                       itemBuilder: (context, index) {
                         final item =
-                        historyItems[index] as Map<String, dynamic>;
+                            historyItems[index] as Map<String, dynamic>;
                         final vehicle =
                             item['vehicle'] as Map<String, dynamic>? ?? {};
                         final vehicleType = vehicle['vehicleTypeId'];
+
+                        final distance = '${item['distance'] ?? 0} m';
+                        final dateTime = item['endTime'] != null
+                            ? DateTime.parse(
+                                item['endTime'],
+                              ).toLocal().toString().substring(0, 16)
+                            : '';
 
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 20.0),
                           child: _buildHistoryCard(
                             imagePath: _getIconForVehicleType(vehicleType),
-                            iconSize: 48,
-                            distance: _formatDistance(item['distance']),
-                            dateTime: _formatDate(item['endTime']),
-                            price: _formatPrice(item),
+                            distance: distance,
+                            dateTime: dateTime,
                           ),
                         );
                       },
@@ -203,23 +147,24 @@ class _HistoryState extends State<History> {
     );
   }
 
+  String _getIconForVehicleType(dynamic id) {
+    switch (id.toString().trim()) {
+      case '1':
+        return 'lib/assets/imgs/S.png';
+      case '2':
+        return 'lib/assets/imgs/Wheel.png';
+      case '3':
+        return 'lib/assets/imgs/Bicycle.png';
+      default:
+        return 'lib/assets/imgs/S.png';
+    }
+  }
+
   Widget _buildHistoryCard({
     required String imagePath,
-    required double iconSize,
     required String distance,
     required String dateTime,
-    required String price,
   }) {
-    Widget dot() =>
-        Container(
-          width: 8,
-          height: 8,
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            shape: BoxShape.circle,
-          ),
-        );
-
     return Container(
       height: 125,
       decoration: BoxDecoration(
@@ -228,58 +173,54 @@ class _HistoryState extends State<History> {
       ),
       child: Stack(
         children: [
-          Positioned(top: 14, left: 20, child: dot()),
-          Positioned(top: 14, right: 20, child: dot()),
+          Positioned(
+            top: 14,
+            left: 20,
+            child: Container(
+              width: 8,
+              height: 8,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+          Positioned(
+            top: 14,
+            right: 20,
+            child: Container(
+              width: 8,
+              height: 8,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(24, 22, 24, 14),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 24.0,
+              vertical: 16.0,
+            ),
             child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Expanded(
-                  child: Row(
-                    children: [
-                      SizedBox(
-                        width: 64,
-                        height: 64,
-                        child: Center(
-                          child: SizedBox(
-                            width: iconSize,
-                            height: iconSize,
-                            child: Image.asset(
-                              imagePath,
-                              fit: BoxFit.contain,
-                            ),
-                          ),
-                        ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Image.asset(imagePath, width: 64, height: 64),
+                    const SizedBox(width: 16),
+                    Text(
+                      distance,
+                      style: GoogleFonts.inter(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
                       ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            distance,
-                            maxLines: 1,
-                            style: GoogleFonts.inter(
-                              color: Colors.white,
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        price,
-                        maxLines: 1,
-                        style: GoogleFonts.inter(
-                          color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
+                const Spacer(),
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
