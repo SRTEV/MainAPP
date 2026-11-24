@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 
+import '../Modules/BlockChecker.dart';
+
 class RentalPlan {
   final int id;
   final String planName;
@@ -43,8 +45,12 @@ class RentalController extends ChangeNotifier {
   bool _isLoading = false;
   bool get isLoading => _isLoading;
   int? _RentalId;
+  String? blockedReason;
 
   int? get RentalId => _RentalId;
+
+  // Повідомлення сервера про оплату, отримане після завершення поїздки (оплата відбувається в api/Rental/end)
+  String? lastPaymentMessage;
 
   Future<void> fetchRentalPlans(int vehicleTypeId) async {
     _isLoading = true;
@@ -105,6 +111,13 @@ class RentalController extends ChangeNotifier {
         _RentalId = data['id'];
         notifyListeners();
         return null;
+      } else
+      if (BlockChecker.blockedReasonFrom(response.statusCode, response.body) !=
+          null) {
+        // Konto zablokowane: zwracamy kod, a ekran mapy otwiera stronę blokady
+        blockedReason =
+            BlockChecker.blockedReasonFrom(response.statusCode, response.body);
+        return BlockChecker.blockedErrorCode;
       } else {
         final data = jsonDecode(response.body);
         return data['message'] ?? "Failed to start rental.";
@@ -133,6 +146,16 @@ class RentalController extends ChangeNotifier {
 
       if (response.statusCode == 200) {
         _RentalId = null;
+        lastPaymentMessage = null;
+        try {
+          final data = jsonDecode(response.body);
+          final payment = data is Map ? data['payment'] : null;
+          if (payment is Map && payment['message'] is String) {
+            lastPaymentMessage = payment['success'] == true
+                ? "Success: ${payment['message']}"
+                : payment['message'];
+          }
+        } catch (_) {}
         notifyListeners();
         return null;
       } else {

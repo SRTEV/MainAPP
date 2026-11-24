@@ -53,16 +53,14 @@ class _ProfileState extends State<Profile> {
     }
   }
 
-  String _maskCardNumber(String? cardNumber) {
-    if (cardNumber == null || cardNumber
+  // Сервер повертає тільки останні 4 цифри картки
+  String _maskCardNumber(String? last4) {
+    if (last4 == null || last4
         .trim()
-        .length < 8) {
+        .length != 4) {
       return "•••• •••• •••• ••••";
     }
-    String cleaned = cardNumber.trim();
-    String first4 = cleaned.substring(0, 4);
-    String last4 = cleaned.substring(cleaned.length - 4);
-    return "$first4 •••• •••• $last4";
+    return "•••• •••• •••• ${last4.trim()}";
   }
 
   void _showTopNotification(BuildContext context, String message) {
@@ -188,15 +186,10 @@ class _ProfileState extends State<Profile> {
                     final token = authCtrl.token;
                     final userId = authCtrl.userId;
                     final paymentCtrl = context.read<PaymentController>();
-                    final userCtrl = context.read<UserController>();
                     if (token != null && userId != null) {
                       bool success = await paymentCtrl.payOutstandingBalance(
                         authCtrl.userId!, // 1. userId
                         authCtrl.token!, // 2. token
-                        userCtrl.CardNumb, // 3. cardNum
-                        userCtrl.cardExpiryDate, // 4. cardExpDate
-                        userCtrl.cardCvv, // 5. cardCvv
-                        userCtrl.userEmail, // 6. userEmail
                       );
 
                       if (mounted) {

@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:http/http.dart' as http;
 
 class UserController extends ChangeNotifier {
@@ -20,7 +21,6 @@ class UserController extends ChangeNotifier {
   String? banReason;
   String? CardNumb;
   String? cardExpiryDate;
-  String? cardCvv;
 
   List<dynamic> adminCallsList = [];
 
@@ -41,7 +41,6 @@ class UserController extends ChangeNotifier {
 
         userName = data['name'];
         balance = data['oustandingBalances'];
-        hashedPassword = data['passwordHash'];
         tempId = data['id'];
         Deleted = data['deleted'];
         Role = data['RoleId'];
@@ -54,7 +53,6 @@ class UserController extends ChangeNotifier {
           await getCardNumb(id, token);
         } else {
           CardNumb = null;
-          cardCvv = null;
         }
       }
     } catch (_) {} finally {
@@ -98,7 +96,9 @@ class UserController extends ChangeNotifier {
       String type,
       int? VehicleId,
       String? email,
-      int? userId,) async {
+      int? userId, {
+        String? token,
+      }) async {
     if (text.isEmpty) {
       return "Text field is empty";
     }
@@ -108,7 +108,10 @@ class UserController extends ChangeNotifier {
     try {
       final response = await http.post(
         url,
-        headers: {"Content-Type": "application/json"},
+        headers: {
+          "Content-Type": "application/json",
+          if (token != null) "Authorization": "Bearer $token",
+        },
         body: json.encode({
           'Text': text,
           'Type': type,
@@ -217,7 +220,15 @@ class UserController extends ChangeNotifier {
       return "Invalid date format (MM/YY)";
     }
 
-    cardCvv = cvv;
+    String paymentMethodId;
+    try {
+      paymentMethodId = await _createStripePaymentMethod(
+          cleanCardNumber, expMonth, expYear, cvv);
+    } on StripeException catch (e) {
+      return e.error.localizedMessage ?? "Invalid card data";
+    } catch (_) {
+      return "Invalid card data";
+    }
 
     final url = Uri.parse('$serverApi/api/Card');
 
@@ -229,16 +240,15 @@ class UserController extends ChangeNotifier {
           "Authorization": "Bearer $token",
         },
         body: json.encode({
-          'cardNumber': cleanCardNumber,
           'expiryDate': "$expYear-${expMonth.toString().padLeft(2, '0')}-01",
-          'cvvCode': cvv,
+          'paymentMethodId': paymentMethodId,
         }),
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         return "Success: Card added successfully";
       } else {
-        return "Failed to save card";
+        return _serverMessage(response.body) ?? "Failed to save card";
       }
     } catch (_) {
       return "Network error";
@@ -260,7 +270,6 @@ class UserController extends ChangeNotifier {
       if (response.statusCode == 204 || response.statusCode == 200) {
         CardNumb = null;
         cardExpiryDate = null;
-        cardCvv = null;
 
         return "Success: Card deleted successfully";
       } else {
@@ -289,7 +298,15 @@ class UserController extends ChangeNotifier {
       return "Invalid date format (MM/YY)";
     }
 
-    cardCvv = cvv;
+    String paymentMethodId;
+    try {
+      paymentMethodId = await _createStripePaymentMethod(
+          cleanCardNumber, expMonth, expYear, cvv);
+    } on StripeException catch (e) {
+      return e.error.localizedMessage ?? "Invalid card data";
+    } catch (_) {
+      return "Invalid card data";
+    }
 
     final url = Uri.parse('$serverApi/api/Card/$cardId');
 
@@ -301,16 +318,15 @@ class UserController extends ChangeNotifier {
           "Authorization": "Bearer $token",
         },
         body: json.encode({
-          'cardNumber': cleanCardNumber,
           'expiryDate': "$expYear-${expMonth.toString().padLeft(2, '0')}-01",
-          'cvvCode': cvv,
+          'paymentMethodId': paymentMethodId,
         }),
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         return "Success: Card updated successfully";
       } else {
-        return "Failed to update card";
+        return _serverMessage(response.body) ?? "Failed to update card";
       }
     } catch (_) {
       return "Network error";
@@ -356,8 +372,7 @@ class UserController extends ChangeNotifier {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
 
-        CardNumb = data['cardNumber'];
-        cardCvv = data['cvvCode'];
+        CardNumb = data['cardLast4'];
 
         String rawDate = data['expiryDate'] ?? '';
 
@@ -378,5 +393,36 @@ class UserController extends ChangeNotifier {
     } catch (_) {}
   }
 
+  Future<String> _createStripePaymentMethod(String cardNumber, int expMonth,
+      int expYear, String cvv) async {
+    try {
+      await Stripe.instance.dangerouslyUpdateCardDetails(
+        CardDetails(
+          number: cardNumber,
+          expirationMonth: expMonth,
+          expirationYear: expYear,
+          cvc: cvv,
+        ),
+      );
 
+      final paymentMethod = await Stripe.instance.createPaymentMethod(
+        params: PaymentMethodParams.card(
+          paymentMethodData: PaymentMethodData(
+            billingDetails: BillingDetails(email: userEmail),
+          ),
+        ),
+      );
+      return paymentMethod.id;
+    } finally {
+      await Stripe.instance.dangerouslyUpdateCardDetails(CardDetails());
+    }
+  }
+
+  String? _serverMessage(String body) {
+    try {
+      final data = json.decode(body);
+      if (data is Map && data['message'] is String) return data['message'];
+    } catch (_) {}
+    return null;
+  }
 }

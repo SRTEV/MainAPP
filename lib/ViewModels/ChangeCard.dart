@@ -44,6 +44,9 @@ class _ChangecardState extends State<Changecard> {
 
   // Змінні для збереження початкових значень з контролера
   String _initialCardNumber = '';
+
+  // Останні 4 цифри поточної картки (лише для підказки, повний номер не зберігається)
+  String? _currentLast4;
   String _initialExpiry = '';
   bool _isInitialized = false;
 
@@ -53,8 +56,10 @@ class _ChangecardState extends State<Changecard> {
     if (!_isInitialized) {
       final userCtrl = context.read<UserController>();
 
-      // Підтягуємо поточний номер та термін дії з бекенду (якщо вони завантажені)
-      _initialCardNumber = userCtrl.CardNumb ?? '';
+      // Повний номер картки більше не зберігається на сервері, тому поле номера порожнє:
+      // для зміни картки потрібно ввести повний номер і CVV (вони йдуть лише у Stripe).
+      _currentLast4 = userCtrl.CardNumb;
+      _initialCardNumber = '';
       _initialExpiry = userCtrl.cardExpiryDate ?? '';
 
       _cardNumberController.text = _initialCardNumber;
@@ -168,7 +173,9 @@ class _ChangecardState extends State<Changecard> {
                   controller: _cardNumberController,
                   keyboardType: TextInputType.number,
                   decoration: _inputDecoration(
-                    hint: "1111222333444555666",
+                    hint: _currentLast4 != null
+                        ? "Current: •••• $_currentLast4"
+                        : "1111222333444555666",
                     errorText: _cardError,
                   ),
                 ),
@@ -234,14 +241,12 @@ class _ChangecardState extends State<Changecard> {
                     onPressed: () async {
                       _hideKeyboard();
 
-                      // Перевірка: чи є реальні зміни або чи поля заповнені
+
                       bool isCardChanged = _cardNumberController.text !=
                           _initialCardNumber;
                       bool isExpiryChanged = _expiryController.text !=
                           _initialExpiry;
                       bool isCvvProvided = _cvvController.text.isNotEmpty;
-
-                      // Якщо нічого не змінювалося і не введено новий CVV — виходимо без запиту
                       if (!isCardChanged && !isExpiryChanged &&
                           !isCvvProvided) {
                         Navigator.pop(context, "No changes made");

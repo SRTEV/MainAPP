@@ -15,7 +15,6 @@ import 'package:provider/provider.dart';
 
 import '../Controllers/ChallangeController.dart';
 import '../Controllers/Controller.dart';
-import '../Controllers/PaymentController.dart';
 import '../Controllers/UserController.dart';
 import '../Controllers/ZoneController.dart';
 import '../Modules/BlockChecker.dart';
@@ -1336,10 +1335,6 @@ class _MapPageState extends State<MapPage>
                         context.read<
                             AuthController>();
 
-                        final userController =
-                        context.read<
-                            UserController>();
-
                         final token =
                             authController.token;
 
@@ -1369,50 +1364,6 @@ class _MapPageState extends State<MapPage>
                           return;
                         }
 
-                        if (userController
-                            .CardNumb ==
-                            null ||
-                            userController
-                                .cardExpiryDate ==
-                                null) {
-                          showTopNotification(
-                            scaffoldContext,
-                            "Please add a payment card first!",
-                          );
-                          return;
-                        }
-
-                        final paymentController =
-                        context.read<
-                            PaymentController>();
-
-                        final userCtrl =
-                        context.read<
-                            UserController>();
-
-                        final authCtrl =
-                        context.read<
-                            AuthController>();
-
-                        final paymentMessage =
-                        await paymentController
-                            .payForRental(
-                          rentalId,
-                          authCtrl.userId!,
-                          authCtrl.token!,
-                          userCtrl.CardNumb,
-                          userCtrl.cardExpiryDate,
-                          userCtrl.cardCvv,
-                          userCtrl.userEmail,
-                        );
-
-                        if (paymentMessage !=
-                            null) {
-                          showTopNotification(
-                            scaffoldContext,
-                            paymentMessage,
-                          );
-                        }
 
                         final String?
                         errorMessage =
@@ -1428,6 +1379,16 @@ class _MapPageState extends State<MapPage>
 
                         if (errorMessage ==
                             null) {
+                          final paymentMessage = context
+                              .read<RentalController>()
+                              .lastPaymentMessage;
+                          if (paymentMessage != null) {
+                            showTopNotification(
+                              scaffoldContext,
+                              paymentMessage,
+                            );
+                          }
+
                           if (mounted) {
                             setState(() {
                               _activeRental =
@@ -2287,6 +2248,18 @@ class _MapPageState extends State<MapPage>
                                   token:
                                   token,
                                 );
+
+                                    if (errorMessage ==
+                                        BlockChecker.blockedErrorCode) {
+                                      // Konto zablokowane po stronie serwera
+                                      BlockChecker.openBlockedPage(
+                                        context,
+                                        context
+                                            .read<RentalController>()
+                                            .blockedReason,
+                                      );
+                                      return;
+                                    }
 
                                 if (errorMessage ==
                                     null) {

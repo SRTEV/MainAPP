@@ -5,6 +5,8 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'package:mainapp/Router.dart';
 
+import '../Modules/BlockChecker.dart';
+
 class AuthController extends ChangeNotifier {
   String message = '';
   String? token;
@@ -175,6 +177,13 @@ class AuthController extends ChangeNotifier {
             context,
             MaterialPageRoute(builder: (context) => const RoleRouter())
         );
+      } else
+      if (BlockChecker.blockedReasonFrom(response.statusCode, response.body) !=
+          null) {
+        // Konto zablokowane: serwer nie wydał tokenu, pokazujemy stronę blokady z powodem
+        BlockChecker.openBlockedPage(
+            context,
+            BlockChecker.blockedReasonFrom(response.statusCode, response.body));
       } else {
         setMessage(json.decode(response.body)['message'] ?? "Login failed",
             isError: true);

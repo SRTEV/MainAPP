@@ -139,7 +139,6 @@ class ReportworkState extends State<Reportwork> {
                             ],
                           ),
                           const SizedBox(height: 20),
-                          // Плашка "Repair Report" на всю ширину
                           Container(
                             width: double.infinity,
                             padding: const EdgeInsets.symmetric(vertical: 10),
@@ -162,7 +161,6 @@ class ReportworkState extends State<Reportwork> {
                             ),
                           ),
                           const SizedBox(height: 16),
-                          // Головний сірий блок на всю довжину завдяки Expanded всередині IntrinsicHeight
                           Expanded(
                             child: Container(
                               padding: const EdgeInsets.all(16.0),
@@ -178,7 +176,6 @@ class ReportworkState extends State<Reportwork> {
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: [
                                   const SizedBox(height: 8),
-                                  // Номер, тип та модель по центру
                                   Column(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.center,
@@ -224,7 +221,6 @@ class ReportworkState extends State<Reportwork> {
                                     ],
                                   ),
                                   const SizedBox(height: 20),
-                                  // Текстове поле на всю решту висоти сірого блоку
                                   Expanded(
                                     child: Container(
                                       decoration: BoxDecoration(
@@ -265,7 +261,6 @@ class ReportworkState extends State<Reportwork> {
                             ),
                           ),
                           const SizedBox(height: 20),
-                          // Чорна кнопка "Send"
                           SizedBox(
                             width: double.infinity,
                             height: 50,
@@ -308,6 +303,9 @@ class ReportworkState extends State<Reportwork> {
                                       currentId,
                                       userEmail,
                                       userController.tempId,
+                                      token: context
+                                          .read<AuthController>()
+                                          .token,
                                     );
 
                                 if (currentId != null) {
