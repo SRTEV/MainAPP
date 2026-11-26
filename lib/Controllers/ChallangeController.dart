@@ -168,7 +168,7 @@ class Challangecontroller extends ChangeNotifier {
 
     try {
       final response = await http.get(
-        Uri.parse('$serverApi/api/Competition/UserResults/$userId'),
+        Uri.parse('$serverApi/api/Competition/UserResults'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',

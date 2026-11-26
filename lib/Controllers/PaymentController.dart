@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 
-
+// Оплата відбувається на сервері збереженим токеном Stripe (pm_...), який створюється
+// один раз під час додавання картки. Застосунок більше не передає номер картки чи CVV
+// при оплаті і не створює метод оплати повторно.
 class PaymentController extends ChangeNotifier {
   String get serverApi => dotenv.env['SERVER']!;
 
@@ -13,7 +15,7 @@ class PaymentController extends ChangeNotifier {
   bool isLoading = false;
   String message = '';
 
-
+  // true, якщо сервер повідомив, що в користувача немає дійсного методу оплати
   bool paymentMethodMissing = false;
 
   Future<String?> payForRental(int rentalId,
@@ -24,7 +26,7 @@ class PaymentController extends ChangeNotifier {
     paymentMethodMissing = false;
     notifyListeners();
 
-    final url = Uri.parse('$serverApi/api/Payment/pay/$rentalId/$userId');
+    final url = Uri.parse('$serverApi/api/Payment/pay/$rentalId');
     try {
       final response = await http.post(
         url,
@@ -57,7 +59,6 @@ class PaymentController extends ChangeNotifier {
   }
 
   Future<bool> payOutstandingBalance(
-    int userId,
     String token,
   ) async {
     isLoading = true;
@@ -65,7 +66,7 @@ class PaymentController extends ChangeNotifier {
     paymentMethodMissing = false;
     notifyListeners();
 
-    final url = Uri.parse('$serverApi/api/Payment/OutstandingBalance/$userId');
+    final url = Uri.parse('$serverApi/api/Payment/OutstandingBalance');
 
     try {
       final response = await http.post(

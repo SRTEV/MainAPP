@@ -53,6 +53,9 @@ class _MapPageState extends State<MapPage>
 
   Duration _timerRentDuration = Duration.zero;
 
+  // Stan łączności wypożyczonego pojazdu z serwerem (do wykrycia zmiany i komunikatu)
+  bool _rentalConnectionLost = false;
+
   LatLng? _lastPosition;
 
   dynamic _selectedVehicle;
@@ -169,6 +172,11 @@ class _MapPageState extends State<MapPage>
           (timer) {
         if (!mounted) {
           timer.cancel();
+          return;
+        }
+
+        // Przy utracie łączności z pojazdem czas nie jest naliczany
+        if (_activeRental != null && _activeRental.connectionLost == true) {
           return;
         }
 
@@ -509,6 +517,24 @@ class _MapPageState extends State<MapPage>
               (v) => v.id == _activeRental.id,
         );
       } catch (_) {}
+
+      final bool lostNow = _activeRental.connectionLost == true;
+      if (lostNow != _rentalConnectionLost) {
+        _rentalConnectionLost = lostNow;
+        // Utrata łączności jest pokazywana plakietką w panelu jazdy,
+        // a jej przywrócenie krótkim zielonym komunikatem.
+        if (!lostNow) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            showTopNotification(
+              context,
+              "Success: scooter is back online, timer resumed.",
+            );
+          });
+        }
+      }
+    } else {
+      _rentalConnectionLost = false;
     }
 
     if (_selectedVehicle != null) {
@@ -665,7 +691,7 @@ class _MapPageState extends State<MapPage>
                               width: 40,
                               height: 40,
                             ),
-                      ),
+                          ),
                         ),
                       ),
                 )
@@ -905,7 +931,10 @@ class _MapPageState extends State<MapPage>
 
         padding: EdgeInsets.only(
           bottom:
-          (_selectedVehicle != null ||
+          (_activeRental != null &&
+              _activeRental.connectionLost == true)
+              ? 390.0 // panel jazdy z plakietką braku łączności jest wyższy
+              : (_selectedVehicle != null ||
               _startedRental != null ||
               _activeRental != null)
               ? 310.0
@@ -934,81 +963,79 @@ class _MapPageState extends State<MapPage>
         ),
       ),
 
-      bottomNavigationBar: SizedBox(
-        height: 80,
-        child: Theme(
-          data: Theme.of(context).copyWith(
-            canvasColor: Colors.black,
-          ),
+      // Wysokość paska dopasowuje się sama: treść + dolny margines systemu (np. pasek gestów iPhone)
+      bottomNavigationBar: Theme(
+        data: Theme.of(context).copyWith(
+          canvasColor: Colors.black,
+        ),
 
-          child: BottomNavigationBar(
-            type:
-            BottomNavigationBarType.fixed,
+        child: BottomNavigationBar(
+          type:
+          BottomNavigationBarType.fixed,
 
-            selectedItemColor:
-            Colors.white,
+          selectedItemColor:
+          Colors.white,
 
-            unselectedItemColor:
-            Colors.white,
+          unselectedItemColor:
+          Colors.white,
 
-            iconSize: 32,
+          iconSize: 32,
 
-            selectedFontSize: 14,
+          selectedFontSize: 14,
 
-            unselectedFontSize: 14,
+          unselectedFontSize: 14,
 
-            onTap: (index) =>
-                _onItemTapped(
-                  index,
-                  context,
-                ),
-
-            items: const [
-              BottomNavigationBarItem(
-                icon: Padding(
-                  padding:
-                  EdgeInsets.only(bottom: 4),
-                  child: Icon(
-                    Icons.emoji_events,
-                  ),
-                ),
-                label: 'Challenges',
+          onTap: (index) =>
+              _onItemTapped(
+                index,
+                context,
               ),
 
-              BottomNavigationBarItem(
-                icon: Padding(
-                  padding:
-                  EdgeInsets.only(bottom: 4),
-                  child: Icon(
-                    Icons.history,
-                  ),
+          items: const [
+            BottomNavigationBarItem(
+              icon: Padding(
+                padding:
+                EdgeInsets.only(bottom: 4),
+                child: Icon(
+                  Icons.emoji_events,
                 ),
-                label: 'History',
               ),
+              label: 'Challenges',
+            ),
 
-              BottomNavigationBarItem(
-                icon: Padding(
-                  padding:
-                  EdgeInsets.only(bottom: 4),
-                  child: Icon(
-                    Icons.camera_alt,
-                  ),
+            BottomNavigationBarItem(
+              icon: Padding(
+                padding:
+                EdgeInsets.only(bottom: 4),
+                child: Icon(
+                  Icons.history,
                 ),
-                label: 'Scan',
               ),
+              label: 'History',
+            ),
 
-              BottomNavigationBarItem(
-                icon: Padding(
-                  padding:
-                  EdgeInsets.only(bottom: 4),
-                  child: Icon(
-                    Icons.person,
-                  ),
+            BottomNavigationBarItem(
+              icon: Padding(
+                padding:
+                EdgeInsets.only(bottom: 4),
+                child: Icon(
+                  Icons.camera_alt,
                 ),
-                label: 'Account',
               ),
-            ],
-          ),
+              label: 'Scan',
+            ),
+
+            BottomNavigationBarItem(
+              icon: Padding(
+                padding:
+                EdgeInsets.only(bottom: 4),
+                child: Icon(
+                  Icons.person,
+                ),
+              ),
+              label: 'Account',
+            ),
+          ],
         ),
       ),
     );
@@ -1281,6 +1308,51 @@ class _MapPageState extends State<MapPage>
                   const SizedBox(
                     height: 20,
                   ),
+
+                  if (vehicle.connectionLost == true)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade50,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.red.shade100),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.wifi_off_rounded,
+                            color: Colors.red.shade400,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  "Scooter is offline",
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.red.shade700,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                const Text(
+                                  "Your timer is paused. You won't be charged for this time.",
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: Colors.black54,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
 
                   const Text(
                     "Travel time",

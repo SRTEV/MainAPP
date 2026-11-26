@@ -19,6 +19,8 @@ class UserController extends ChangeNotifier {
   int? cardId;
   bool? isBlocked;
   String? banReason;
+
+  // Останні 4 цифри картки (повний номер не зберігається і не приходить із сервера)
   String? CardNumb;
   String? cardExpiryDate;
 
@@ -63,7 +65,7 @@ class UserController extends ChangeNotifier {
 
 
   Future<void> deleteAccount(int id, String text, String token) async {
-    final url = Uri.parse('$serverApi/api/User/App/Delete/$id');
+    final url = Uri.parse('$serverApi/api/User/App/Delete');
 
     try {
       final response = await http.post(
@@ -92,6 +94,8 @@ class UserController extends ChangeNotifier {
     }
   }
 
+  // token — JWT zalogowanego użytkownika (null dla formularza na ekranie logowania).
+  // Serwer bierze UserId z tokenu, a nie z treści zgłoszenia.
   Future<String?> giveMeHeplPlease(String text,
       String type,
       int? VehicleId,
@@ -220,6 +224,8 @@ class UserController extends ChangeNotifier {
       return "Invalid date format (MM/YY)";
     }
 
+    // CVV використовується лише тут, у пам'яті, для створення токена Stripe (pm_...).
+    // CVV не зберігається в контролері і не надсилається на сервер.
     String paymentMethodId;
     try {
       paymentMethodId = await _createStripePaymentMethod(
@@ -239,6 +245,7 @@ class UserController extends ChangeNotifier {
           "Content-Type": "application/json",
           "Authorization": "Bearer $token",
         },
+        // Номер картки на сервер не передається: сервер бере останні 4 цифри та відбиток картки зі Stripe за paymentMethodId.
         body: json.encode({
           'expiryDate': "$expYear-${expMonth.toString().padLeft(2, '0')}-01",
           'paymentMethodId': paymentMethodId,
@@ -298,6 +305,8 @@ class UserController extends ChangeNotifier {
       return "Invalid date format (MM/YY)";
     }
 
+    // CVV використовується лише тут, у пам'яті, для створення токена Stripe (pm_...).
+    // CVV не зберігається в контролері і не надсилається на сервер.
     String paymentMethodId;
     try {
       paymentMethodId = await _createStripePaymentMethod(
@@ -317,6 +326,7 @@ class UserController extends ChangeNotifier {
           "Content-Type": "application/json",
           "Authorization": "Bearer $token",
         },
+        // Номер картки на сервер не передається (див. addCard).
         body: json.encode({
           'expiryDate': "$expYear-${expMonth.toString().padLeft(2, '0')}-01",
           'paymentMethodId': paymentMethodId,
@@ -337,7 +347,7 @@ class UserController extends ChangeNotifier {
       String name,
       String email,
       String token,) async {
-    final url = Uri.parse('$serverApi/api/User/ChangeAccountInfo/$userId');
+    final url = Uri.parse('$serverApi/api/User/ChangeAccountInfo');
 
     try {
       final response = await http.post(
@@ -362,7 +372,7 @@ class UserController extends ChangeNotifier {
   Future<void> getCardNumb(int userId, String token) async {
     try {
       final response = await http.get(
-        Uri.parse('$serverApi/api/Card/user-card/$userId'),
+        Uri.parse('$serverApi/api/Card/user-card'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
@@ -372,6 +382,7 @@ class UserController extends ChangeNotifier {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
 
+        // Сервер повертає лише останні 4 цифри картки (повний номер більше не зберігається)
         CardNumb = data['cardLast4'];
 
         String rawDate = data['expiryDate'] ?? '';

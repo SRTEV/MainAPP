@@ -17,6 +17,9 @@ class VehicleModel {
   final double batteryCapacity;
   final double electricityConsumption;
 
+  // Serwer nie otrzymuje telemetrii od wypożyczonego pojazdu (pole wyliczane w API)
+  final bool connectionLost;
+
 
   VehicleModel({
     required this.id,
@@ -28,6 +31,7 @@ class VehicleModel {
     required this.batteryLevel,
     required this.batteryCapacity,
     required this.electricityConsumption,
+    this.connectionLost = false,
   });
 
   factory VehicleModel.fromJson(Map<String, dynamic> json) {
@@ -51,6 +55,7 @@ class VehicleModel {
       batteryLevel: json['batteryLevel'] ?? 0,
       batteryCapacity: (json['batteryCapacity'] ?? 0).toDouble(),
       electricityConsumption: (json['electricityConsumption'] ?? 0).toDouble(),
+      connectionLost: json['connectionLost'] == true,
     );
   }
 }

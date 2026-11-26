@@ -188,8 +188,7 @@ class _ProfileState extends State<Profile> {
                     final paymentCtrl = context.read<PaymentController>();
                     if (token != null && userId != null) {
                       bool success = await paymentCtrl.payOutstandingBalance(
-                        authCtrl.userId!, // 1. userId
-                        authCtrl.token!, // 2. token
+                        authCtrl.token!,
                       );
 
                       if (mounted) {

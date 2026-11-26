@@ -168,7 +168,7 @@ class RentalController extends ChangeNotifier {
   }
 
   Future<List<dynamic>> FetchRentalHistory(int userId, String token) async {
-    final url = Uri.parse('$serverApi/api/Rental/History/$userId');
+    final url = Uri.parse('$serverApi/api/Rental/History');
 
     try {
       final response = await http.get(

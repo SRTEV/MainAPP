@@ -281,7 +281,7 @@ class AuthController extends ChangeNotifier {
 
     try {
       final response = await http.post(
-        Uri.parse('$serverApi/api/User/ChangeLoggedPassword/$userId'),
+        Uri.parse('$serverApi/api/User/ChangeLoggedPassword'),
         headers: {
           "Content-Type": "application/json",
           "Authorization": "Bearer $token",

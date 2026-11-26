@@ -88,12 +88,12 @@ class RepairmanmapState extends State<Repairmanmap>
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
 
-        final vehicleController = Provider.of<Controller>(
-          context,
-          listen: false,
-        );
+      final vehicleController = Provider.of<Controller>(
+        context,
+        listen: false,
+      );
 
-        await vehicleController.fetchVehicles();
+      await vehicleController.fetchVehicles();
 
       if (!mounted) return;
 
@@ -551,42 +551,40 @@ class RepairmanmapState extends State<Repairmanmap>
           child: const Icon(Icons.my_location, color: Colors.white),
         ),
       ),
-      bottomNavigationBar: SizedBox(
-        height: 80,
-        child: Theme(
-          data: Theme.of(context).copyWith(canvasColor: Colors.black),
-          child: BottomNavigationBar(
-            type: BottomNavigationBarType.fixed,
-            selectedItemColor: Colors.white,
-            unselectedItemColor: Colors.white,
-            iconSize: 28,
-            selectedFontSize: 12,
-            unselectedFontSize: 12,
-            onTap: (index) => _onItemTapped(index, context),
-            items: const [
-              BottomNavigationBarItem(
-                icon: Padding(
-                  padding: EdgeInsets.only(bottom: 4),
-                  child: Icon(Icons.assignment_outlined),
-                ),
-                label: 'Admin calls',
+      // Wysokość paska dopasowuje się sama: treść + dolny margines systemu (np. pasek gestów iPhone)
+      bottomNavigationBar: Theme(
+        data: Theme.of(context).copyWith(canvasColor: Colors.black),
+        child: BottomNavigationBar(
+          type: BottomNavigationBarType.fixed,
+          selectedItemColor: Colors.white,
+          unselectedItemColor: Colors.white,
+          iconSize: 28,
+          selectedFontSize: 12,
+          unselectedFontSize: 12,
+          onTap: (index) => _onItemTapped(index, context),
+          items: const [
+            BottomNavigationBarItem(
+              icon: Padding(
+                padding: EdgeInsets.only(bottom: 4),
+                child: Icon(Icons.assignment_outlined),
               ),
-              BottomNavigationBarItem(
-                icon: Padding(
-                  padding: EdgeInsets.only(bottom: 4),
-                  child: Icon(Icons.build),
-                ),
-                label: 'Start work',
+              label: 'Admin calls',
+            ),
+            BottomNavigationBarItem(
+              icon: Padding(
+                padding: EdgeInsets.only(bottom: 4),
+                child: Icon(Icons.build),
               ),
-              BottomNavigationBarItem(
-                icon: Padding(
-                  padding: EdgeInsets.only(bottom: 4),
-                  child: Icon(Icons.person),
-                ),
-                label: 'Account',
+              label: 'Start work',
+            ),
+            BottomNavigationBarItem(
+              icon: Padding(
+                padding: EdgeInsets.only(bottom: 4),
+                child: Icon(Icons.person),
               ),
-            ],
-          ),
+              label: 'Account',
+            ),
+          ],
         ),
       ),
     );
